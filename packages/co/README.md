@@ -6,9 +6,9 @@ OpenProse-native repository.
 `co` sits next to `std` under `packages/`, not inside it. `std` is the
 low-level standard library: roles, patterns, output adapters, memory, evals,
 and ops primitives. `co` is an opinionated starter kit for a specific domain:
-a company whose operating system is made of Prose services and systems.
+a company whose operating requirements are expressed through reusable contracts.
 
-Reference services and systems in `co` with the `co/` shorthand (analogous to
+Reference contracts in `co` with the `co/` shorthand (analogous to
 `std/`):
 
 ```markdown
@@ -36,7 +36,7 @@ packages/co/
     company-repo-checker.eval.prose.md
 ```
 
-## Services and Systems
+## Starter contracts
 
 - **`agent-readiness`** — narrow intake a founder can run in under a minute:
   scores how accessible their site is to AI agents (well-known paths,
@@ -60,13 +60,12 @@ OpenProse, Inc.'s private business logic:
 ## std vs co — the split
 
 - **std** — use-case-agnostic primitives. Inspector, contract-grader, retry,
-  fan-out, worker-critic, human-gate. Things that make *Prose services and
-  systems work*.
+  fan-out, worker-critic, human-gate. Things that make *reusable Prose contracts work*.
 - **co** — company-operations-shaped patterns. Starter repo checkers,
   scheduled intake, windowed analytics, GTM pipelines, fleet monitors.
-  Things that make *Prose services and systems produce business value*.
+  Things that make *reusable Prose contracts support company operations*.
 
-## Running Services and Systems
+## Running contracts
 
 `prose run` is an agent-session command. It is not assumed to be a shell binary.
 If a host provides a native Prose CLI, use it. Otherwise wrap the command in an
@@ -91,8 +90,8 @@ instruction the agent session interprets as the OpenProse VM.
 
 - Keep this package generic. Do not include OpenProse, Inc. leads, accounts,
   GTM logic, release logic, or private operating assumptions.
-- Prefer composable services and systems with inline starter services until a
-  service earns a stable public API.
+- Prefer reusable contracts with explicit requirements and interfaces. Keep
+  helper contracts local until they earn a stable public interface.
 - Put universal primitives in `std/`; put company-operating-system patterns
   here.
 - Keep generated runtime state out of this package. Useful lessons can become

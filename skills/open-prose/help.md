@@ -6,9 +6,16 @@ Load this file when a user invokes `prose help` or asks about OpenProse.
 
 ## Welcome
 
-OpenProse is a programming language for AI sessions. You declare the truths you want kept current as responsibilities (and the helper functions they call), and the VM (this session) executes them by spawning real subagents — running a render only when a node's inputs or its own contract have materially moved.
+With OpenProse, state what the agent must accomplish, which requirements it
+must satisfy, and where it can choose its approach. Contract authoring is
+expressing intent by composing requirements. Reusable contracts provide the
+building blocks; composition determines how their requirements apply together.
 
-**A long-running AI session is a Turing-complete computer. OpenProse is a programming language for it.**
+The public skill uses Contract Markdown for requirements and interfaces, and
+ProseScript for required steps inside a render. A `responsibility` maintains
+state over time; a `function` provides a one-time call. The agent follows the
+VM instructions using the selected host's capabilities. See
+[requirements and composition](guidance/authoring.md#requirements-and-composition).
 
 ---
 
@@ -33,7 +40,7 @@ Options:
 **After the user responds:**
 
 - **Run a contract**: Ask for the file path, then load `prose.md` and execute
-- **Build something new**: Start with `prose init` / `prose compose` when the Contract system is not yet clear; use `prose write` when one Contract is already understood
+- **Build something new**: Start with `prose init` / `prose compose` when the contract system is not yet clear; use `prose write` when one contract is already understood
 - **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
 - **Improve OpenProse**: Run `std/evals/prose-contributor` on relevant run IDs; require explicit user approval before pushing or opening a PR
@@ -46,7 +53,7 @@ Options:
 | Command | What it does |
 |---------|--------------|
 | `prose init [request...]` | Initialize an OpenProse workspace and begin its architecture |
-| `prose compose [request...]` | Design and evolve the program's Contracts, relationships, and architecture |
+| `prose compose [request...]` | Design and evolve the program's contracts, relationships, and architecture |
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>` | Run a responsibility or function contract |
@@ -82,9 +89,9 @@ prose compose
 prose write
 ```
 
-`prose compose` progressively turns the project architecture into full Contract
+`prose compose` progressively turns the project architecture into full contract
 source while keeping unresolved regions explicit. It creates semantic tests in
-order from the package promise through Contract boundaries, failure behavior,
+order from the package promise through contract boundaries, failure behavior,
 portability, and performance. It never edits the OpenProse framework during
 composition; framework feedback is deduplicated and filed as a public issue
 when authorized, or preserved as an issue draft.

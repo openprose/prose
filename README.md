@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="assets/readme-header.png" alt="OpenProse" width="100%" />
-</p>
-
-<p align="center">
-  <strong>Standing AI jobs, declared in Markdown.</strong>
+  <strong>State the requirements. Reuse and combine contracts.</strong>
 </p>
 
 <p align="center">
@@ -18,11 +14,23 @@
 
 ## What this is
 
-**OpenProse is a declarative language for standing AI work.** Instead of scripting a sequence of instructions and hoping the run lands where you wanted, you declare the world as it should be: an _ideal world state_, written as familiar structured **Markdown contracts** (`*.prose.md`). You say what must stay true, and the system works out how much model work it takes to keep it that way. When order, loops, or exact choreography genuinely matter, optional imperative **ProseScript** plans drop in. Declarative by default, imperative where you want the control.
+**With OpenProse, you state what an agent must accomplish, which requirements it
+must satisfy, and where it can choose its approach.** Contract authoring is
+expressing intent by composing requirements. Reusable contracts provide the
+building blocks; composition determines how their requirements apply together.
 
-This is the oldest good idea in software, pointed at agents. SQL, Terraform, Kubernetes, React: you declare the desired state, and a reconciler is responsible for making reality match it. A thermostat is the one-sentence version. You set the temperature you want and it holds the room there; you never tell it when to fire.
+This public repository supplies the **Contract Markdown and ProseScript**
+format, the `open-prose` skill, and reusable libraries. A `responsibility`
+expresses requirements for state maintained over time. A `function` performs a
+one-time call. ProseScript specifies required steps when their order or method
+matters. See [requirements and composition](skills/open-prose/guidance/authoring.md#requirements-and-composition)
+for how these fit together.
 
-OpenProse is a language, not a platform. The contracts are plain files that run on **any Prose-Complete agent harness** (any agent host that can spawn sessions, read and write files, and call tools): the language ships as a Skill your coding agent runs directly, and any conforming harness (see [Harnesses](#harnesses)) can compile and serve the same contracts as a standing process.
+Contracts are readable `*.prose.md` files. A compatible agent harness runs them
+using the skill and its own tools. The requirements remain the reference for
+success; execution depends on the host's inputs, capabilities, and permissions.
+Serving a standing responsibility requires a host that supports continuous
+operation. See [Harnesses](#harnesses) and [Honest status](#honest-status).
 
 ## Run it where your agent lives
 
@@ -35,9 +43,9 @@ npx skills add openprose/prose
 That installs OpenProse into any Prose-Complete coding agent (Claude Code, Codex CLI, OpenCode, and friends). From there, point your agent at a contract and say `prose run <file>`: the session itself embodies the VM; there is no separate binary. The [`examples/`](skills/open-prose/examples/) directory is the tour; start small and read the contract before you run it.
 
 For a new program, say `prose init`, then use `prose compose` to shape its
-purpose, topology, Contract boundaries, and outside-in semantic tests. Compose
+purpose, topology, contract boundaries, and outside-in semantic tests. Compose
 progressively materializes one directory package; use `prose write` when a
-single Contract is already understood and needs focused authoring.
+single contract is already understood and needs focused authoring.
 
 Your first contract is a Markdown file away: `kind: responsibility` frontmatter, a `### Goal` that states what should stay true, and the sections below. The skill teaches your agent the rest.
 
@@ -64,7 +72,7 @@ The deep truth lives in the skill ([`skills/open-prose/`](skills/open-prose/)) a
 
 ## Nothing is held hostage
 
-The contracts in this repo are **harness-agnostic**: OpenProse Markdown runs on any Prose-Complete agent host (a fresh `git clone` is a first-class experience). The contract is the public artifact; the deployment's secrets and data stay private. A contract and its trail can leave for any compliant host with no lost meaning. OpenProse stays free, MIT, and portable, forever.
+The contracts in this repo target **compatible Prose-Complete agent hosts**. The same authored requirements can be reused with a different host that supports the required operations. A contract and its trail are portable artifacts; deployment secrets and private data need not be published with them. Portability does not imply identical model results or provide missing tools. OpenProse remains MIT-licensed.
 
 ## Harnesses
 

@@ -10,7 +10,7 @@ Static assets for the OpenProse language specification repository.
 
 ## Contents
 
-- `readme-header.png`: Header banner shown at the top of the root README. Carries the OpenProse brand hero: the wordmark, the headline, and the install command.
+- `readme-header.png`: Retained legacy README banner with the former headline and install command. The root README now introduces the current requirements and composition language in text.
 
 ## Plugin assets
 

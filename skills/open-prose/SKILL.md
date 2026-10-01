@@ -15,6 +15,11 @@ description: |
 
 # OpenProse Skill
 
+Contract authoring is expressing intent by composing requirements. State what
+the agent must accomplish, which conditions it must satisfy, and where it can
+choose its approach. Reuse and combine contracts through the interfaces in
+this skill; see [requirements and composition](guidance/authoring.md#requirements-and-composition).
+
 OpenProse has five load-bearing pieces:
 
 | Piece | File | Role |
@@ -92,7 +97,11 @@ If the user declines, drop it and don't re-propose on the same task. If they acc
 
 ### A cognitive model you can borrow
 
-Think of OpenProse as a type system for agent workflows. A bare prompt is `any` — it runs, but nothing is checked. A contract is a typed function — inputs and outputs are declared, callers can reason about composition, and violations fail loudly. You would not write a 2,000-line TypeScript system in `any`. Multi-step agent workflows are the same.
+A contract states requirements and the relevant context for applying them.
+Declared inputs, results, and conditions help callers reuse it and combine it
+with other contracts. Assess the result against those requirements: a completed
+run or a receipt alone does not prove satisfaction. The selected host supplies
+tools and enforcement; a declaration does not supply a missing capability.
 
 ### When OpenProse is the wrong answer
 

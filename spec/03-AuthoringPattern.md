@@ -1,6 +1,12 @@
 # OpenProse Authoring Pattern
 
-###### How to write OpenProse for a conforming harness — the language layer beneath evented reconciliation.
+###### How to express requirements for standing work in the public skill format.
+
+Contract authoring expresses intent through requirements. Reusable contracts
+provide the building blocks; composition determines how their requirements
+apply together. This document focuses on standing responsibilities and the
+harness behavior they require. The [authoring guide](../skills/open-prose/guidance/authoring.md#requirements-and-composition)
+also covers one-time calls, required steps, and evidence.
 
 The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
@@ -40,7 +46,7 @@ in its light:
 > already exists. What changes is doctrine: the responsibility is the
 > top-level authored object, the render is where the work happens (there is no
 > separate fulfillment system), and two contract sections (`### Maintains` and
-> `### Continuity`) carry a cost-and-reconciliation obligation they did not
+> `### Continuity`) carry requirements for cost and reconciliation they did not
 > visibly carry before.
 
 ---
@@ -61,7 +67,7 @@ Forme, the canonicalizer, and the VM are the substrate, never the unit of author
 ```
 
 The authoring consequence: **you do not start by writing a system. You start by
-writing one sentence of durable intent and what makes it true** — a `### Goal`
+stating the intended result and the requirements it must satisfy** — a `### Goal`
 and a `### Maintains`. A responsibility is _served_, not _run_, but that is not a
 limitation: "not directly runnable" means "continuously reconciled," which is the
 entire point. The render of a single responsibility still runs standalone
@@ -152,7 +158,7 @@ There is no `### Criteria` and no judge. State what "satisfied" means as
 - **Deterministic where you can express it.** "The release-notes file's last
   commit is newer than the latest merged PR touching `src/`" compiles into a
   validator the harness runs at commit. If it fails, the render commits nothing.
-- **Self-attested where it is semantic.** Where the obligation cannot be reduced
+- **Self-attested where it is semantic.** Where the requirement cannot be reduced
   to a validator, the render must attest it satisfied its own `### Maintains`
   before it signs. `gateCommit` fails closed: no attestation, no commit. (Part II:
   the deterministic gate is built but currently unwired, so the live commit rides
@@ -221,7 +227,7 @@ autowired service graph.
 upstream facet in `### Requires`; Forme matches it to A's `### Maintains` facet
 and draws the subscription edge. B's render wakes on A's receipt when that
 facet's fingerprint moves — identical to consuming a webhook. Two authoring
-obligations make it safe:
+requirements make it safe:
 
 - **Reference, don't embed.** B's `### Requires` names A's responsibility id /
   facet as a declared subscription, not a copied value.

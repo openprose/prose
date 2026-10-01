@@ -31,7 +31,7 @@ describe("prose compose", () => {
 		expect(compose).toMatch(/`prose init` invokes it in `bootstrap`/);
 	});
 
-	it("is an obligation-centered directory package", () => {
+	it("is a directory package organized by requirements", () => {
 		expect(composePackage).toEqual([
 			"index.prose.md",
 			"compose.test.prose.md",

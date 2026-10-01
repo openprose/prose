@@ -16,7 +16,9 @@ see-also:
 ProseScript describes exact workflow choreography inside a single render: call
 this function, pass these bindings, run these branches in parallel, loop until
 this condition holds, and handle failures this way. Use it when order matters.
-Use Contract Markdown when the end state matters and Forme can choose the graph.
+Use Contract Markdown to state requirements and dependencies; use ProseScript
+when specific steps are required. Pinned steps constrain the approach and remain
+part of the contract alongside requirements for the result.
 
 ProseScript is the **intra-node** layer: `call` invokes a `function`, and
 `session`/`agent`/`resume` spawn one-off sub-agents — all ephemeral and internal

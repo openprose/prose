@@ -53,13 +53,13 @@ The original blueprint proposed a clean break from ProseScript. That was wrong. 
 
 ---
 
-## 4. Obligation vocabulary, split by node-vs-call: `Maintains` and `Returns`
+## 4. Requirements for nodes and calls: `Maintains` and `Returns`
 
-Words are chosen for how *the model* reads them, and the split that matters now is **standing obligation vs. one-shot output**. A `responsibility` (a mounted node) declares `### Maintains`: a model reading "maintains the set of known-exploitable CVEs" treats it as a truth it must keep true *over time*, and the section also doubles as the world-model **schema** (type + canonicalization spec + facets + postconditions). A `function` (a called helper) declares `### Returns`: a model reading "returns the parsed advisories" treats it as the output shape of a single call — no world-model, no standing obligation.
+Words are chosen for how *the model* reads them, and the split that matters now is **standing requirements vs. one-shot output**. A `responsibility` (a mounted node) declares `### Maintains`: a model reading "maintains the set of known-exploitable CVEs" treats it as a truth it must keep true *over time*, and the section also doubles as the world-model **schema** (type + canonicalization spec + facets + postconditions). A `function` (a called helper) declares `### Returns`: a model reading "returns the parsed advisories" treats it as the output shape of a single call — no world-model, no standing requirement.
 
 This is the split the old single `### Ensures` collapsed. `### Maintains` is *not* a rename of `### Ensures` — it is a richer section doing four jobs, and the folded-in `### Criteria` postconditions live there (no separate judge beat). Reading "Ensures → Maintains" as a pure rename is the false-friend trap.
 
-**How to apply:** A standing truth maintained over time is `### Maintains` on a `responsibility`. A one-shot computed output is `### Returns` on a `function`. Prefer words the model interprets as obligations for the former, and as plain output shape for the latter. Do not put a world-model on a `function`.
+**How to apply:** A standing truth maintained over time is `### Maintains` on a `responsibility`. A one-shot computed output is `### Returns` on a `function`. Prefer words the model interprets as requirements for the former, and as plain output shape for the latter. Do not put a world-model on a `function`.
 
 ---
 

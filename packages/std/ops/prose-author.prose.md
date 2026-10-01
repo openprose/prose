@@ -354,8 +354,9 @@ Normalize the caller's rough request into an explicit authoring intent.
 - Treat page, notify, create channel, publish, execute, rollback, feature flag,
   status update, and issue creation as side-effect signals that require an
   explicit sub-unit boundary and safety gate.
-- Extract obligations before implementation details. Desired outputs and
-  invariants matter more than proposed step order.
+- Extract requirements before implementation details. Desired outputs and
+  invariants matter more than proposed step order. Preserve any steps or
+  ordering the caller requires.
 - When the request says "always", "keep", "monitor", "every", "when event
   happens", or "before deadline", consider whether a responsibility plus
   gateway is appropriate.

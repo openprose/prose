@@ -1,5 +1,11 @@
 # OpenProse Examples
 
+These examples show how to express requirements through reusable contracts.
+Start with [contract authoring](../guidance/authoring.md#requirements-and-composition)
+to distinguish the required result, permitted approach, and evidence of
+satisfaction. The examples below exercise the public skill's standing-work
+format and its declared harness behavior.
+
 These examples are small OpenProse Native Repositories. Each one models a real
 standing goal as a mounted `responsibility` (the headline kind) that maintains
 a world-model, with cross-node helper `function`s it `call`s and a `gateway`

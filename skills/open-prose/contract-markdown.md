@@ -15,6 +15,10 @@ see-also:
 
 # Contract Markdown
 
+A contract states requirements and the context needed to interpret and apply
+them. [Contract authoring](guidance/authoring.md#requirements-and-composition)
+explains how reusable contracts express those requirements together.
+
 Contract Markdown is the human-facing `*.prose.md` format for OpenProse
 responsibilities, functions, gateways, patterns, and tests. It uses tiny YAML
 frontmatter for file identity, then Markdown sections for the human-facing

@@ -93,7 +93,7 @@ iteration without freezing internal details too early.
 - Prefer the smallest test that rules out the largest incorrect region of the
   design space.
 - A test failure is evidence about the program first. Classify framework
-  pressure separately and publish it through the feedback obligation.
+  pressure separately and publish it through the feedback contract.
 - Do not encode topology as an implementation snapshot when the same promise
   can be tested through observable behavior.
 - Do not claim cross-harness portability until the same test sources have run
