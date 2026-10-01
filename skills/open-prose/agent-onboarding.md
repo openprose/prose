@@ -1,6 +1,11 @@
 # OpenProse: Agent Onboarding
 
-> Declare outcomes. Not instructions.
+> State the requirements. Reuse and combine contracts.
+
+Contract authoring is expressing intent by composing requirements. Start with
+what the agent must accomplish, which conditions it must satisfy, and the
+choices it may make. See [requirements and composition](guidance/authoring.md#requirements-and-composition)
+for the public skill format.
 
 ## Install
 
@@ -16,7 +21,7 @@ CLI, OpenCode, Amp.
 When a `prose` command fires, you will:
 
 - Read a Markdown contract (a `responsibility` or `function` file).
-- Spawn subagents to render the truths it declares.
+- Spawn subagents to carry out the requirements it declares.
 - Pass artifacts between them through a `bindings/` boundary.
 - Persist the run to `<openprose-root>/runs/{id}/` so it can be inspected later.
 
@@ -88,7 +93,8 @@ runs only when something material moves. A `function` is the called helper tier
 prose run research-monitor.prose.md
 ```
 
-The contract says _what_. The runtime figures out _how_. In an agent harness,
+The contract states requirements and the choices left open. The agent chooses
+an approach within those requirements, including any required steps. In an agent harness,
 `prose run ...` is an instruction inside the agent session. From a shell, pass
 that instruction to a Prose Complete runner, for example:
 

@@ -1,12 +1,19 @@
 # OpenProse
 
-###### Standing AI jobs, declared as durable Markdown contracts.
+###### Requirements expressed through reusable Markdown contracts.
 
 This document is the specification of **the OpenProse Language & Framework** —
 the durable `*.prose.md` contract format, the skill semantics that interpret
 it, the model-run compiler that lowers it, and the standard library that
 packages reusable behavior. It is the spec for what ships **bundled as the
 SKILL**.
+
+Contract authoring is expressing intent by composing requirements. Authors
+state what an agent must accomplish, which conditions it must satisfy, and
+where it can choose its approach. Reusable contracts provide the building
+blocks; composition determines how their requirements apply together. The
+[authoring guide](../skills/open-prose/guidance/authoring.md#requirements-and-composition)
+explains this vocabulary for the format specified here.
 
 The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
@@ -76,7 +83,7 @@ Part II is honest about how far the current skill has climbed toward them.
 - **Intelligence lives in the model, not in deterministic code (Tenet 2).**
   Compilation is itself model work — intelligent sessions lower a contract into
   its IR (the Forme topology, the per-node canonicalizer, and the postcondition
-  validators — deterministic where the obligation is expressible, render-attested
+  validators — deterministic where the requirement is expressible, render-attested
   where it is semantic); deterministic code only validates that IR, wires connectors,
   enforces boundaries, schedules, and signs. The language never grows a config
   format to encode what the model should decide.
@@ -133,7 +140,7 @@ the Ideal must state them rather than defer: `### Requires`, `### Maintains`,
 current.** It does four jobs at once: it *types* the maintained truth; it
 carries the *canonicalization spec* (which fields are material, how they
 normalize) that compiles into the node's fingerprint; it declares *facets*
-(below); and it states *postconditions* — the obligations a render must satisfy
+(below); and it states *postconditions* — the requirements a render must satisfy
 before it may commit. There is no separate judge and no `### Criteria`:
 satisfaction folds into `### Maintains`, checked deterministically where it can
 be expressed as a validator and self-attested by the render where it is

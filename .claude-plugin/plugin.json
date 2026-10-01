@@ -1,6 +1,6 @@
 {
   "name": "open-prose",
-  "description": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace.",
+  "description": "State what an agent must accomplish and which requirements it must satisfy. Reuse and combine Markdown contracts.",
   "version": "0.18.0",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",

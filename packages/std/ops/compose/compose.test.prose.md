@@ -15,17 +15,17 @@ subject: compose
 - `authority_scope`: openprose-maintainer
 - `framework_maturity`: experimental
 - `request`: |
-    The architect previously selected an obligation-centered directory package,
+    The architect previously selected a directory package organized by requirements,
     then explored topology guidance and supplied framework feedback. Continue
     from the settled package decision without losing the topology findings.
 
 ### Expects
 
-- `mental_model_sync`: identifies the obligation-centered package as settled
+- `mental_model_sync`: identifies the package organized by requirements as settled
 - `active_frontier`: resurfaces its pending materialization before opening a new
   conceptual frontier
-- `source_projection`: contains `index.prose.md` plus obligation-owned sibling
-  Contracts
+- `source_projection`: contains `index.prose.md` plus sibling contracts
+  organized around their requirements
 - `test_strategy`: begins with the package promise and orders later testing
   through Contract boundaries, interaction topology, failure behavior, harness
   portability, and only then performance

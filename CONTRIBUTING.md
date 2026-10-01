@@ -1,7 +1,7 @@
 # Contributing to OpenProse
 
-OpenProse is a programming language for AI sessions, expressed as durable
-Markdown contracts. Good contributions make agent workflows more readable,
+OpenProse supports contract authoring: expressing intent by composing
+requirements in Markdown. Good contributions make agent work more readable,
 reviewable, versioned, reusable, inspectable, and cheaper to trust over time.
 
 This repository is the open-source language, skill, standard library, and
@@ -33,11 +33,10 @@ A strong OpenProse PR should:
 
 Use these when deciding whether a change belongs:
 
-- **Markdown source defines intent.** Authored `*.prose.md` files say what must
-  be true; runtime and harness code should not smuggle in semantic policy.
-- **Outcomes stay decoupled from implementation.** Users declare the result or
-  desired state; OpenProse can improve models, retries, and program structure
-  beneath that contract without changing the user's intent.
+- **Markdown source defines intent.** Authored `*.prose.md` files state requirements; runtime and harness code should not smuggle in semantic policy.
+- **Requirements remain distinct from approaches.** Users state required results,
+  conditions, and steps. Models, retries, and program structure may change
+  within those requirements without changing the user's intent.
 - **The skill and interpreter docs define semantics.** Contract Markdown,
   Forme, Prose VM, ProseScript, and Responsibility Runtime are the load-bearing
   language/framework surface.

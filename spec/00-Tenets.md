@@ -16,7 +16,7 @@ evidence); by design it is realized where decisions are frozen — at compile,
 where the canonicalizer and postcondition validators are fixed, and at the
 commit gate, whose admissibility check keeps an inadmissible render from
 corrupting the truth (correctness) and whose fail-closed default makes a render
-that cannot satisfy its obligations commit nothing rather than act (safety,
+that cannot satisfy its requirements commit nothing rather than act (safety,
 Tenet 4). Below that floor the stack is the resolution rule for the
 safety → cost → silence trade-offs — Tenet 4's "safety outranks cost; cost
 outranks silence": safety is Tenet 4, cost is the spend weighed against safety

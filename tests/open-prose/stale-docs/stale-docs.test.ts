@@ -213,7 +213,45 @@ describe("guidance/authoring.md — reshaped to the new kind set", () => {
 	it("drops the legacy ### Ensures-as-obligation framing in favor of Maintains/Returns", () => {
 		// ### Ensures retired (re-purposed, not renamed).
 		expect(doc).not.toContain("### Ensures");
-		expect(f).toMatch(/Make every `### Returns` \/ `### Maintains` item an obligation/);
+		expect(f).toMatch(/Make every `### Returns` \/ `### Maintains` item a requirement/);
+	});
+});
+
+describe("dedicated VM prompt follows the current skill router", () => {
+	const doc = read("guidance/system-prompt.md");
+	const f = flat(doc);
+
+	it("routes responsibilities and functions while refusing direct pattern and gateway runs", () => {
+		expect(f).toContain("Load `SKILL.md` for the current command router");
+		expect(f).toContain("Run `kind: function` as a called helper");
+		expect(f).toContain("Run `kind: responsibility` as a mounted DAG node");
+		expect(f).not.toContain("Refuse `prose run` on `kind: responsibility`");
+		for (const kind of ["pattern", "gateway"]) {
+			expect(f).toContain(`Refuse \`prose run\` on \`kind: ${kind}\``);
+		}
+		expect(f).toContain("Route `kind: test` files through `prose test`");
+	});
+
+	it("uses current interfaces and backend-specific completion rules", () => {
+		for (const section of ["Requires", "Maintains", "Parameters", "Returns"]) {
+			expect(doc).toContain(`### ${section}`);
+		}
+		expect(doc).not.toContain("### Services");
+		expect(doc).not.toContain("### Ensures");
+		expect(f).toContain("`state/filesystem.md` is normative for paths, ownership, and serialization");
+		expect(f).toContain("Responsibility runs publish the canonical world-model and append receipts");
+		expect(f).toContain("called functions publish their declared returns");
+		expect(f).not.toContain("`bindings/`: non-empty files for every declared output");
+	});
+
+	it("retains dedicated-instance, capability, pinning, privacy, and secret boundaries", () => {
+		expect(f).toContain("Refuse general-purpose work");
+		expect(f).toContain("do not silently simulate a multi-agent run");
+		expect(f).toContain("Requirements do not supply missing tools or grant permissions");
+		const prohibitions = doc.slice(doc.indexOf("Do not:"), doc.indexOf("## Standard Refusal"));
+		expect(prohibitions).toContain("Reorder a pinned `### Execution` block");
+		expect(prohibitions).toContain("Share private workspace scratch files unless the contract declares them");
+		expect(prohibitions).toContain("Log or reveal environment variable values");
 	});
 });
 

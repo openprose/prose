@@ -283,14 +283,14 @@ are design defaults and live in **Architecture**, not here.
      is a pure predicate over the ledger.
 6. **The commit gate is deterministic (`gateCommit`).** A render may commit only
    if its compiled postconditions pass — deterministic validators where the
-   obligation can be expressed as one, the render's own self-attestation of its
-   `### Maintains` obligations where it is semantic. A render that fails commits
+   requirement can be expressed as one, the render's own self-attestation of its
+   `### Maintains` requirements where it is semantic. A render that fails commits
    nothing: the prior truth stands, no downstream wakes, and a `failed` receipt
    records why. There is no judge and no confidence score in the commit decision.
    The hard guarantee — an inadmissible render cannot corrupt the truth — is the
-   **deterministic** validators'; where an obligation is only semantic, the
+   **deterministic** validators'; where a requirement is only semantic, the
    render's self-attestation is a *soft* gate (the render attesting its own
-   `### Maintains` obligations), and how honestly a
+   `### Maintains` requirements), and how honestly a
    model attests is a model-choice property measured offline, not a runtime
    guarantee. Negate the deterministic gate and an inadmissible render can corrupt
    the maintained truth — the class's correctness guarantee is void.
@@ -394,7 +394,7 @@ defense is structural, not a confidence score:
 
 - **A render that cannot satisfy its postconditions commits nothing.**
   `gateCommit` runs the node's compiled validators deterministically; where an
-  obligation is semantic, the render must self-attest it. Either path failing
+  requirement is semantic, the render must self-attest it. Either path failing
   yields a `failed` receipt — the prior truth stands, the world-model is
   untouched, and no downstream wakes. An inadmissible render can never corrupt
   the maintained truth or the schedule (Tenet 4; invariant 6).

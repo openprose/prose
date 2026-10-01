@@ -1,6 +1,9 @@
 # OpenProse Standard Library
 
-Reusable OpenProse functions, responsibilities, patterns, roles, delivery adapters, memory contracts, and operational tools.
+Reusable contracts provide building blocks for requirements. This library
+includes OpenProse functions, responsibilities, patterns, roles, delivery
+adapters, memory contracts, and operational tools. Combine them through their
+declared interfaces; see [contract authoring](../../skills/open-prose/guidance/authoring.md#requirements-and-composition).
 
 ## Usage
 

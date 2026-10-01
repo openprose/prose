@@ -14,6 +14,42 @@ Use this file when writing or reviewing OpenProse author-facing artifacts:
 `kind: responsibility`, `kind: function`, `kind: gateway`, `kind: test`, and
 `kind: pattern`.
 
+## Requirements and composition
+
+State what the agent must accomplish, which requirements it must satisfy, and
+where it can choose its approach. **Contract authoring is expressing intent by
+composing requirements.** A contract states requirements and the context needed
+to interpret and apply them. Reusable contracts provide the building blocks;
+composition determines how their requirements apply together.
+
+Requirements can concern a one-time result, state maintained over time, a
+required action, a limit on permissible actions, or evidence needed at
+completion. An approach is a way to satisfy requirements; required steps remain
+requirements when other choices are open. Completing a render, producing a
+receipt, and satisfying the contract are distinct results.
+
+In this format, reuse a `function` by supplying its `### Parameters` and calling
+it; combine responsibilities through declared `### Requires` / `### Maintains`
+subscriptions; specialize a `pattern` through its slots and configuration.
+For example, a report can call reusable research and review functions while
+requiring source citations and review before publication. Use the documented
+sections and interfaces to express those requirements together.
+
+Check that the combined requirements and interfaces are compatible. Surface
+contradictions for resolution; do not silently discard a requirement or invent
+precedence between contracts.
+
+Keep requirements distinguishable from supplied inputs, host capabilities, and
+execution evidence. Declaring a tool or permission does not provide it. A link
+alone does not create a subscription or change a contract's requirements.
+Revise changed requirements explicitly in the source selected for the run;
+past evidence does not establish satisfaction of a revised contract.
+
+This vocabulary does not add syntax, a generic type system, or new precedence
+rules. The following guidance describes the public skill's existing format.
+Its [implementation status](../../../spec/01-Language.md#part-iii--what-is-next)
+distinguishes specified requirements from implemented harness enforcement.
+
 Every authored file is **one render** — a contract plus the bounded session that
 runs it. The `kind` field is sugar over that single render atom: each kind is the
 same render with different or missing sections (the authored kinds in
@@ -99,7 +135,7 @@ world-model, no `### Maintains`, and no `### Continuity`.
 - Use `### Errors` for named failures that should propagate. Do not use a
   catch-all error for ordinary alternate outcomes.
 - Use `### Invariants` for properties that remain true on success and failure.
-- Use `### Strategies` for judgment guidance, not hidden fallback obligations.
+- Use `### Strategies` for judgment guidance, not hidden fallback requirements.
 - Give functions explicit `### Shape` when boundaries matter: `self`,
   `delegates`, and `prohibited`. `delegates` names the helper functions this
   render `call`s (intra-node, ephemeral) — it is not a DAG edge.
@@ -268,7 +304,7 @@ subject: summarizer
 - `### Expects` and `### Expects Not` are semantic assertions over the subject's
   world-model (responsibility) or returned value (function). Test observable
   behavior, not exact phrasing.
-- Prefer assertions tied to contract obligations: required output existence,
+- Prefer assertions tied to contract requirements: required output existence,
   coverage, evidence, degradation behavior, error signaling, and absence of
   forbidden behavior.
 - Assertion reports should name each assertion, pass/fail status, and concise
@@ -334,9 +370,9 @@ state is its world-model.
 
 - When the task is one competent session, write one function or one
   responsibility; do not manufacture orchestration.
-- When the outcome matters more than choreography, use Contract Markdown only.
+- When requirements leave the method open, use Contract Markdown without an execution block.
 - When exact order, bounded loops, retries, gates, or branch logic matter, use `### Execution`.
-- Make every `### Returns` / `### Maintains` item an obligation: named output, evaluable quality bar, and any degradation case.
+- Make every `### Returns` / `### Maintains` item a requirement: named output, evaluable quality bar, and any degradation case.
 - Put caller-supplied values in `### Parameters` / `### Requires`; put runtime-provided secrets/config in `### Environment`.
 - Use conditional returns for graceful degradation: "if X unavailable: produce Y with caveats."
 - Use `### Errors` for named failures that should propagate, not for ordinary alternate outcomes.

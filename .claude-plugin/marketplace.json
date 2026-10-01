@@ -1,7 +1,7 @@
 {
   "name": "openprose",
   "metadata": {
-    "description": "Stop scripting agents. Declare them."
+    "description": "Express intent by composing requirements."
   },
   "owner": {
     "name": "OpenProse",
@@ -11,7 +11,7 @@
     {
       "name": "open-prose",
       "source": "./",
-      "description": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace."
+      "description": "State what an agent must accomplish and which requirements it must satisfy. Reuse and combine Markdown contracts."
     }
   ]
 }
