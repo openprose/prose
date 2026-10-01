@@ -6,10 +6,10 @@ Load this file when a user invokes `prose help` or asks about OpenProse.
 
 ## Welcome
 
-With OpenProse, state what the agent must accomplish, which requirements it
-must satisfy, and where it can choose its approach. Contract authoring is
-expressing intent by composing requirements. Reusable contracts provide the
+Contract authoring is expressing intent by composing requirements. Reusable contracts provide the
 building blocks; composition determines how their requirements apply together.
+
+An agent performs the work, and an evaluator assesses whether the contract’s requirements are satisfied. The executor returns a result that includes the evidence needed for that assessment. Execution and evaluation repeat as needed.
 
 The public skill uses Contract Markdown for requirements and interfaces, and
 ProseScript for required steps inside a render. A `responsibility` maintains

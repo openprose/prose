@@ -2,10 +2,10 @@
 
 > State the requirements. Reuse and combine contracts.
 
-Contract authoring is expressing intent by composing requirements. Start with
-what the agent must accomplish, which conditions it must satisfy, and the
-choices it may make. See [requirements and composition](guidance/authoring.md#requirements-and-composition)
+Contract authoring is expressing intent by composing requirements. See [requirements and composition](guidance/authoring.md#requirements-and-composition)
 for the public skill format.
+
+An agent performs the work, and an evaluator assesses whether the contract’s requirements are satisfied. The executor returns a result that includes the evidence needed for that assessment. Execution and evaluation repeat as needed.
 
 ## Install
 
