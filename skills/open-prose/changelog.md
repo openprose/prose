@@ -47,6 +47,8 @@ plan.
 
 ## History
 
+- `v0.18.1`: **Contract execution and assessment terminology.** Contract authoring expresses intent by composing requirements. The executor performs work; the evaluator assesses whether requirements are satisfied. A result includes its supporting evidence, and an assessment records the evaluation and findings. Successful execution does not by itself establish contract fulfillment or adequacy. No source rewrite is required: preserve authored syntax, function return declarations, responsibility interfaces, saved records and `runtime_contract: 2`. Review explanatory prose when upgrading; do not rename protocol fields or historical evidence.
+
 - `v0.18.0`: **Example corpus made compiler-clean.** `id:` frontmatter is now
   optional on responsibilities and gateways: the slug is the identity by
   default, and a declared id is the source identity that survives filename and

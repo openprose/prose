@@ -1,6 +1,6 @@
 ---
 name: open-prose
-version: 0.18.0
+version: 0.18.1
 runtime_contract: 2
 description: |
   Activate when the user types `prose ...`, opens a `.prose.md` file with
@@ -15,10 +15,9 @@ description: |
 
 # OpenProse Skill
 
-Contract authoring is expressing intent by composing requirements. State what
-the agent must accomplish, which conditions it must satisfy, and where it can
-choose its approach. Reuse and combine contracts through the interfaces in
-this skill; see [requirements and composition](guidance/authoring.md#requirements-and-composition).
+Contract authoring is expressing intent by composing requirements. An agent
+performs the work, and an evaluator assesses whether the contract’s requirements
+are satisfied. Reuse and combine contracts through the interfaces in this skill; see [requirements and composition](guidance/authoring.md#requirements-and-composition).
 
 OpenProse has five load-bearing pieces:
 

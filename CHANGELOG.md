@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-01 — open-prose skill & plugin
+
+### Changed
+
+- Explain contract authoring as expressing intent by composing requirements.
+- Use executor for the role performing work and evaluator for the role assessing whether requirements are satisfied. Evidence belongs in the result; assessment names the evaluation and its findings.
+- Distinguish successful execution from contract fulfillment and contract adequacy in authoring and interpreter guidance.
+
+The skill runtime contract remains 2. Existing source, return declarations and runtime interfaces need no migration.
+
 ## [0.17.0] - 2026-08-27 — open-prose skill & plugin
 
 ### Added
