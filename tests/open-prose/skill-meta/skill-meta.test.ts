@@ -1,3 +1,5 @@
+[Reading 327 lines from start (total: 327 lines, 0 remaining)]
+
 // Conformance test for the skill-meta module: the versioning + upgrade-mechanism
 // docs of the open-prose SKILL (SKILL.md frontmatter, changelog.md, help.md,
 // prosescript.md, deps.md, agent-onboarding.md).
@@ -285,6 +287,14 @@ describe("deps.md + agent-onboarding.md — kept, survive the overhaul", () => {
 		expect(f).toMatch(/std\/.*github\.com\/openprose\/prose\/packages\/std/);
 	});
 
+	it("deps.md does not teach retired service/system dependency syntax", () => {
+		const doc = read("deps.md");
+		const f = flat(doc);
+		expect(doc).not.toContain("### Services");
+		expect(doc).not.toContain("### Ensures");
+		expect(f).not.toMatch(/service or system|system file|service listed/i);
+	});
+
 	it("agent-onboarding.md teaches an outcome contract without pinning implementation choreography", () => {
 		// Kept, with links; the narrative already aligns.
 		const doc = read("agent-onboarding.md");
@@ -317,3 +327,5 @@ describe("README.md — the skill version of record lives in SKILL.md", () => {
 		);
 	});
 });
+
+[executed on device: ubuntu (a09eeb6f-1167-48b6-b141-f250676c6cc5)]
