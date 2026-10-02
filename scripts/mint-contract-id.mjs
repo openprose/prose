@@ -28,7 +28,10 @@ import { fileURLToPath } from "node:url";
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const ID_LINE = /^id:\s*([0-9A-HJKMNP-TV-Z]{26})\s*$/m;
 const ANY_ID_LINE = /^id:.*$/m;
-const KIND_LINE = /^kind:\s*(\S+)\s*$/m;
+// `[ \t]*` rather than `\s*`: under /m a trailing `\s*` also eats the newline
+// when `kind:` is the last frontmatter line, and `--add` would then write the
+// id onto the closing fence.
+const KIND_LINE = /^kind:[ \t]*(\S+)[ \t]*$/m;
 const VERSION_LINE = /^version:.*$/m;
 const MAY_CARRY_ID = new Set(["responsibility", "gateway"]);
 
