@@ -18,18 +18,21 @@ Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM exe
 - inspection: structured inspection report containing:
     - run_id: the inspected run's identifier
     - system: the system that was run
+    - execution_kind: "mounted-responsibility" or "standalone-function"
     - depth: which depth was performed
     - runtime_fidelity: score (0-100) measuring how faithfully OpenProse VM executed the system
     - task_effectiveness: score (0-100) measuring how well the system accomplished its stated goal
-    - services: per-service breakdown with status, timing, contract satisfaction
+    - units: per-node breakdown for a mounted responsibility, or the function's status, timing, and contract satisfaction for a standalone function
     - flags: list of specific issues found, each with severity (info / warning / critical) and evidence
     - verdict: overall assessment — "pass", "partial", or "fail"
     - summary: 2-3 sentence human-readable summary
 
 ### Errors
 
-- missing-artifacts: the run directory is missing critical files (vm.log.md, root.prose.md, or forme.manifest.json)
+- missing-artifacts: the run directory is missing a critical common or execution-kind-specific artifact
 - corrupted-log: vm.log.md exists but cannot be parsed (no event markers, no header)
+- unsupported-layout: the root source kind or artifact layout is not supported by this inspector
+- ambiguous-layout: the root source and run artifacts indicate conflicting execution kinds
 
 ### Invariants
 
@@ -37,11 +40,15 @@ Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM exe
 
 ### Strategies
 
-- when depth is light: check structural completeness only — vm.log.md has `---end` or `---error`, all declared services have bindings, output files are non-empty, no `__error.md` files. Do not read output content in detail. Target: under 30 seconds, under 10K tokens.
-- when depth is deep: read root.prose.md to understand intent, read forme.manifest.json to understand expected wiring, trace vm.log.md event markers against the manifest's execution order, read each sub-unit's workspace artifacts and bindings, evaluate output quality against the system's `### Maintains` / `### Returns` clauses. Target: thorough analysis, no shortcuts.
+- before discovering outputs: determine the subject's execution kind from `root.prose.md` and its control-plane artifacts. A `kind: responsibility` root with a compiled topology is a mounted-responsibility run. A `kind: function` root with a single activation is a standalone-function run. If the evidence conflicts, raise ambiguous-layout instead of choosing the layout that appears most complete.
+- when depth is light: check structural completeness for the detected execution kind. Require `vm.log.md` and `root.prose.md` for both kinds. For a mounted responsibility, also require `compiled-intent.json`, declared node outputs under `world-model/`, and a valid receipt chain under `receipts/`. For a standalone function, require declared `### Returns` outputs under `bindings/`. Output files must be non-empty and no `__error.md` files may be left unhandled. Do not read output content in detail. Target: under 30 seconds, under 10K tokens.
+- when depth is deep: read `root.prose.md` to understand intent. For a mounted responsibility, read `compiled-intent.json`, trace `vm.log.md` against its topology, cross-check published `world-model/` artifacts and `.version` files against the corresponding receipt chains, and evaluate outputs against each node's `### Maintains`. For a standalone function, trace its single activation, read its declared outputs from `bindings/`, and evaluate them against `### Returns`. Read relevant workspace artifacts for either kind. Target: thorough analysis, no shortcuts.
 - when a sub-unit has `__error.md`: read it, classify the error, check whether the system's conditional returns / maintained postconditions handled the degradation correctly
-- when scoring runtime fidelity: weight heavily on execution order correctness (did services run in the right order?), binding integrity (did outputs get copied correctly?), and vm.log.md completeness (are all markers present?)
-- when scoring task effectiveness: weight heavily on whether the system's top-level maintained truth is satisfied by the final output in bindings
+- when checking a mounted responsibility: treat the receipt ledger as the source of truth. A completion marker alone does not establish structural fidelity. Report a missing receipt, a broken `prev` chain, a published artifact without a matching successful receipt, or a `.version` inconsistent with its receipt as an evidence gap.
+- when checking a standalone function: do not require `world-model/`, `receipts/`, or a mounted topology. Its declared return bindings are the published outputs.
+- when the layout is unsupported or combines incompatible current layouts: report unsupported-layout or ambiguous-layout explicitly. Do not fall back to retired manifest assumptions and do not select whichever output directory yields a passing score.
+- when scoring runtime fidelity: weight heavily on topology or activation correctness, output integrity for the detected execution kind, receipt integrity for mounted responsibilities, and vm.log.md completeness (are all markers present?)
+- when scoring task effectiveness: weight heavily on whether the system's top-level `### Maintains` truth or function's `### Returns` value is satisfied by the resolved published output
 
 ### Execution
 
@@ -110,18 +117,21 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
 - extraction: structured data containing:
     - run_id: string
     - system_name: string
+    - execution_kind: "mounted-responsibility" or "standalone-function"
+    - layout_evidence: paths and source declarations used to determine execution_kind
     - completed: boolean (vm.log.md has `---end`)
     - failed: boolean (vm.log.md has `---error`)
     - error_count: number of `✗` markers in vm.log.md
-    - services_declared: list of service names from manifest
-    - services_completed: list of service names with `✓` markers
-    - services_errored: list of service names with `✗` markers
-    - bindings_present: list of binding paths that exist and are non-empty
-    - bindings_missing: list of expected bindings that are absent or empty
+    - units_declared: node names from compiled intent, or the standalone function name
+    - units_completed: unit names with successful completion markers
+    - units_errored: unit names with `✗` markers
+    - outputs_present: published output paths that exist and are non-empty
+    - outputs_missing: expected published output paths that are absent or empty
+    - receipt_findings: mounted receipt-chain, status, fingerprint, and published-version checks. Empty for a standalone function.
     - (deep only) root_source: full content of root.prose.md
-    - (deep only) manifest_summary: execution order and wiring from forme.manifest.json
-    - (deep only) service_outputs: map of service name to first 500 chars of each binding
-    - (deep only) workspace_artifacts: map of service name to list of files in workspace
+    - (deep only) compiled_intent_summary: mounted topology order and wiring, or the standalone activation summary
+    - (deep only) unit_outputs: map of unit name to the first 500 chars of each published output
+    - (deep only) workspace_artifacts: map of unit name to list of files in workspace
     - (deep only) error_details: contents of any `__error.md` files
 
 ### Errors
@@ -131,6 +141,10 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
 ### Strategies
 
 - when depth is light and a prior deep inspection exists: note "prior deep available" in extraction but do not skip light extraction (light is cheap, always re-run)
+- determine execution_kind before enumerating expected outputs. Use `compiled-intent.json` to resolve mounted nodes and their maintained outputs. Use the standalone function's `### Returns` declarations to resolve expected `bindings/` paths.
+- for a mounted responsibility: read each node's latest receipt, verify the `prev` chain, distinguish `rendered`, `skipped`, and `failed` states, and cross-check each published artifact's `.version` with the receipt that committed it. A failed receipt may leave prior published truth in place; report that distinction rather than treating the existing artifact as a fresh success.
+- for a standalone function: enumerate only declared return bindings. The absence of `world-model/` or `receipts/` is not an error.
+- when current-layout evidence is incomplete or contradictory: preserve the evidence in layout_evidence and raise the matching explicit layout error. Do not infer success from `---end` alone.
 - when reading large files: truncate to relevant portions, never attempt to load entire multi-MB outputs
 - when vm.log.md uses `->` instead of `→`: accept both forms per spec
 
@@ -148,19 +162,21 @@ Apply judgment to the extraction. Score runtime fidelity and task effectiveness 
 ### Returns
 
 - evaluation: structured judgment containing:
-    - runtime_fidelity: object with score (0-100), breakdown (execution_order, binding_integrity, vm_log_completeness, error_handling — each 0-100), and evidence (list of specific observations)
+    - runtime_fidelity: object with score (0-100), breakdown (execution_order, output_integrity, receipt_integrity, vm_log_completeness, and error_handling, each 0-100), and evidence (list of specific observations). receipt_integrity is "not applicable" for standalone functions and is not included in their numeric aggregate.
     - task_effectiveness: object with score (0-100), breakdown (output_existence, output_substance, contract_satisfaction, goal_alignment — each 0-100), and evidence (list of specific observations)
     - flags: list of issues, each with id, severity (info / warning / critical), description, and evidence
     - verdict: "pass" (both scores >= 70, no critical flags), "partial" (one score < 70 or critical flags present but run completed), or "fail" (either score < 40 or run did not complete)
 
 ### Errors
 
-- insufficient-data: extraction is too sparse to evaluate (e.g., light extraction of a failed run with no bindings)
+- insufficient-data: extraction is too sparse to evaluate (e.g., light extraction of a failed run with no published outputs)
 
 ### Strategies
 
-- when depth is light: evaluate only structural metrics — completion, binding existence, error absence. Score conservatively (cap at 85 for runtime fidelity, 80 for task effectiveness) since light cannot verify content quality.
-- when depth is deep: evaluate everything — trace execution against manifest, read outputs against the subject's maintained truth / returns, check for shape violations, assess output quality
+- when depth is light: evaluate only structural metrics — completion, published output existence, error absence. Score conservatively (cap at 85 for runtime fidelity, 80 for task effectiveness) since light cannot verify content quality.
+- when depth is deep: evaluate everything — trace execution against the detected control-plane record, read outputs against the subject's maintained truth / returns, check for shape violations, assess output quality
+- when evaluating a mounted responsibility: use compiled intent, world-model artifacts, and receipt findings together. A valid completion log cannot compensate for missing or inconsistent commit evidence.
+- when evaluating a standalone function: use its activation, return bindings, and log. Do not lower its score for lacking mounted-only artifacts.
 - when scoring: use the full 0-100 range. A perfect run scores 95-100, not 100 (reserve 100 for extraordinary cases). A run with minor issues scores 70-85. A run with significant problems scores 40-69. A fundamentally broken run scores below 40.
 - when a run failed but produced partial output: evaluate what exists. A failed run can still have high task effectiveness if the partial output is useful.
 - when evidence conflicts: note the conflict explicitly in flags rather than silently resolving it
