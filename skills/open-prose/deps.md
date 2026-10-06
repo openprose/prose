@@ -115,6 +115,27 @@ When the VM or Forme encounters a `use` path at runtime:
 5. Resolve the remaining path segments within the cloned repo
 6. Return the absolute file path
 
+### Path confinement (security requirement)
+
+The remaining path is untrusted source data and must never be allowed to escape
+the checked-out repository. Before resolving it:
+
+1. Reject NUL bytes, absolute paths, drive-letter paths, and any `.` or `..`
+   segment. Do not rely on string prefix checks.
+2. Join the path to the pinned repository root and canonicalize it with the
+   platform's real-path operation.
+3. Reject the result unless it is a descendant of that repository root using a
+   path-component-aware comparison. Resolve symlinks before this comparison so
+   a symlink cannot escape the clone.
+4. Apply the same check to the final `.prose.md` file or directory
+   `index.prose.md` selected by extension resolution.
+
+If any check fails, stop with `dependency-path-not-allowed` and do not read,
+write, clone, or execute the requested path. Repository owner and name
+components used to construct clone URLs must likewise be validated as single
+non-empty path components; they must not contain separators, traversal
+segments, control characters, or URL userinfo.
+
 **No network calls during resolution.** All dependencies must be pre-installed via `prose install`. The VM reads from `<openprose-root>/deps/` on disk only.
 
 ---

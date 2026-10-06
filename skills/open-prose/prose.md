@@ -120,6 +120,15 @@ When an identifier is not in `<openprose-root>/deps/`, report:
 The error must name the identifier and the expected `<openprose-root>/deps/` location so the
 user can distinguish a typo from a missing install.
 
+**Path confinement:** dependency paths are untrusted. Reject NUL bytes,
+absolute or drive-letter paths, and `.` / `..` segments. Resolve the requested
+path and symlinks against the pinned repository root, then require a
+path-component-aware descendant check before reading `*.prose.md` or
+`index.prose.md`. Reject an escape with `dependency-path-not-allowed` before
+any file access. Host, owner, and repository URL components must also be
+validated as single path components without separators, control characters,
+traversal, or URL userinfo.
+
 **On the bare `owner/repo` form.** Bare identifiers (no host prefix) are
 reserved for the OpenProse registry. That registry isn't accepting
 publications yet, so the bare form doesn't resolve today — use
