@@ -313,6 +313,15 @@ User-global persistent agents live under `~/.agents/prose/state/agents/`.
 
 ## Remote Dependencies
 
+Treat installed dependencies as executable, untrusted agent instructions. A
+lockfile SHA proves which bytes were selected; it does not make the source safe.
+`prose install` must use an operator-approved host/repository allowlist, validate
+all identifier segments before constructing URLs or paths, and verify the exact
+locked commit after checkout. Review transitive dependencies before execution,
+keep execution offline, and never pass ambient SSH keys, `.netrc`, credential
+helpers, or other secrets to an untrusted clone. `prose install --update` is an
+explicit, reviewed supply-chain change, never an automatic runtime action.
+
 `prose run` and `use` share one resolution algorithm: read the locally
 installed copy in `<openprose-root>/deps/`. Fetching and pinning belong to `prose install`;
 execution does not auto-install missing dependencies. The canonical identifier

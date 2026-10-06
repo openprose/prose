@@ -8,6 +8,14 @@ node_modules/
 **/.turbo/
 *.tsbuildinfo
 
+# OpenProse native-root secrets and generated runtime state
+.env
+.env.*
+!.env.example
+/deps/
+/runs/
+/state/
+
 # Current OpenProse generated state
 .agents/prose/.env
 .agents/prose/deps/

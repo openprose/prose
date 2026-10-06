@@ -18,6 +18,34 @@ service names, and `pattern:` references can point at any explicit git host.
 Dependencies are cloned into `<openprose-root>/deps/`, pinned in `<openprose-root>/prose.lock`, and resolved from
 disk at runtime.
 
+## Security boundary
+
+An installed dependency is executable agent instructions, not inert data. Treat
+the repository, every transitive dependency, and its `*.prose.md` files as
+untrusted until reviewed. A host name or a pinned commit is an identity and
+integrity check, not a safety or authorization decision.
+
+- Use an operator-approved host allowlist for `prose install`; do not let
+  untrusted source choose an arbitrary git host or repository.
+- Review dependency source and its transitive `use` graph before the first run.
+  Never install or execute dependencies solely because a contract, README, or
+  model-generated prompt requested them.
+- Keep dependency installation separate from execution. `prose run` must remain
+  offline and must not auto-install, fetch, or update dependencies.
+- When a lock entry exists, check out the exact full SHA and verify that
+  `git rev-parse HEAD` equals it before making the dependency available. Do not
+  silently substitute a branch, tag, or newer commit.
+- Do not expose SSH keys, `.netrc`, credential helpers, or other ambient git
+  credentials to an untrusted clone. Prefer a dedicated read-only checkout
+  identity and a sandbox for installation.
+- `prose install --update` is a supply-chain change and must be an explicit,
+  reviewed operation; never run it from an automated execution or from an
+  untrusted contract.
+
+These controls apply even when the dependency is hosted on GitHub or uses the
+`std/` or `co/` shorthand. Remote source is a trust boundary, not a plugin
+approval.
+
 ---
 
 ## `use` Statement Parsing
@@ -132,9 +160,18 @@ Scans the project for dependency references and clones missing dependencies.
 2. **Expand** `std/` and `co/` shorthands to `github.com/openprose/prose/packages/{std|co}/`
 3. **Parse** each expanded dependency path to extract `{host, owner, repo}` triples (the first segment is the host if it contains a dot)
 4. For each unique `{host, owner, repo}`:
-   a. If `<openprose-root>/deps/{host}/{owner}/{repo}/` does not exist, clone the repository using the host's normal git URL into `<openprose-root>/deps/{host}/{owner}/{repo}/`
-   b. If `<openprose-root>/prose.lock` has a pinned SHA for this repo, checkout: `git checkout {sha}`
-   c. If no pinned SHA exists (new dependency), use HEAD and record the SHA
+   a. Validate the host, owner, repository, and path segments against the
+      resolver's safe identifier grammar before constructing a clone URL or
+      filesystem path; reject traversal, options, control characters, and
+      ambiguous URL forms.
+   b. If `<openprose-root>/deps/{host}/{owner}/{repo}/` does not exist, clone
+      the repository using the host's normal git URL into
+      `<openprose-root>/deps/{host}/{owner}/{repo}/`.
+   c. If `<openprose-root>/prose.lock` has a pinned full SHA for this repo,
+      checkout that exact object with `git checkout --detach {sha}` and verify
+      `git rev-parse HEAD` matches it byte-for-byte.
+   d. If no pinned SHA exists (new dependency), require explicit operator
+      approval, use HEAD, and record the full resolved SHA
 5. **Scan transitive dependencies** — scan all `*.prose.md` files within newly cloned repos in `<openprose-root>/deps/` for their own `use` statements
 6. **Cycle detection** — if a newly discovered dependency is already in the resolved set, skip it. If scanning reveals a cycle (A requires B requires A), error: `[Error] Circular dependency detected: A → B → A`
 7. **Repeat** from step 2 with any newly discovered dependencies until no new deps are found
@@ -176,7 +213,9 @@ This is not an error. The user can override by editing `<openprose-root>/prose.l
 
 ### Private Repositories
 
-`prose install` uses the user's existing git credential helpers transparently. SSH keys, `gh` auth, `.netrc` — whatever git is configured to use for `github.com` works for `prose install`.
+`prose install` may use git credentials only when the operator has explicitly
+approved the host and repository. Prefer a dedicated read-only identity; do not
+make personal SSH keys, `gh` auth, or `.netrc` available to untrusted source.
 
 ---
 
@@ -348,4 +387,4 @@ explicit "get me every declared dependency at its pinned SHA" command. Neither
 | Transitive deps | Multi-pass scan until stable (errors on cycles) |
 | Version conflicts | Auto-resolve to newer SHA with warning |
 | Runtime resolution | Disk only, no network |
-| Private repos | Uses existing git credentials |
+| Private repos | Explicit approval and isolated read-only credentials only |

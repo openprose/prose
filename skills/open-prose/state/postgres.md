@@ -95,11 +95,17 @@ serialize the raw connection string.
   agent context, do not use the PostgreSQL backend in that harness
 - Use a **dedicated database** for OpenProse, not your production systems
 - Create a **limited-privilege user** with access only to the `openprose` schema
+- Bind local development servers to loopback unless remote access is an explicit
+  requirement, and require TLS (`sslmode=require` or stronger) for remote
+  databases.
+- Never use PostgreSQL trust authentication for a shared or network-exposed
+  instance.
 
 **Recommended setup:**
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+CREATE USER openprose_agent;
+\password openprose_agent
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
@@ -166,10 +172,17 @@ The fastest path to a running PostgreSQL instance:
 docker run -d \
   --name prose-pg \
   -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -p 5432:5432 \
+  -e POSTGRES_USER=openprose_agent \
+  -e POSTGRES_PASSWORD \
+  -p 127.0.0.1:5432:5432 \
   postgres:16
 ```
+
+Before running it, set `POSTGRES_PASSWORD` in the environment from an
+interactive prompt or secret manager. Do not use
+`POSTGRES_HOST_AUTH_METHOD=trust`: it disables password authentication. For a
+team or production deployment, omit the host port unless needed, place the
+database on a private network, and configure TLS and firewall rules.
 
 Then configure the connection:
 
