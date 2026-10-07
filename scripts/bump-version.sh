@@ -15,6 +15,40 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="$REPO_ROOT/.version-bump.json"
 
+# The version manifest is repository-controlled data. Keep its targets inside
+# this checkout and reject traversal/symlink escapes before any write.
+repo_file() {
+  local path="$1" parent base parent_abs
+  if [[ -z "$path" || "$path" == /* || "$path" =~ (^|/)\.\.?(/|$) || "$path" == *$'\n'* || "$path" == *$'\r'* ]]; then
+    echo "error: unsafe repository path: $path" >&2
+    exit 2
+  fi
+  parent="${path%/*}"
+  [[ "$parent" == "$path" ]] && parent="."
+  base="${path##*/}"
+  parent_abs="$(cd "$REPO_ROOT/$parent" 2>/dev/null && pwd -P)" || {
+    echo "error: repository path parent does not exist: $path" >&2
+    exit 2
+  }
+  case "$parent_abs" in
+    "$REPO_ROOT"|"$REPO_ROOT"/*) ;;
+    *) echo "error: repository path escapes checkout: $path" >&2; exit 2 ;;
+  esac
+  if [[ -L "$parent_abs/$base" ]]; then
+    echo "error: refusing symlink target: $path" >&2
+    exit 2
+  fi
+  printf '%s/%s\n' "$parent_abs" "$base"
+}
+
+validate_field() {
+  local field="$1"
+  if [[ ! "$field" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "error: unsafe version field: $field" >&2
+    exit 2
+  fi
+}
+
 if [[ ! -f "$CONFIG" ]]; then
   echo "error: $CONFIG not found" >&2
   exit 2
@@ -35,15 +69,18 @@ json_expr() {
 
 read_field() {
   local path="$1" kind="$2" field="$3"
+  local target
+  target="$(repo_file "$path")"
+  validate_field "$field"
   case "$kind" in
     json)
-      jq -r "$(json_expr "$field")" "$REPO_ROOT/$path"
+      jq -r "$(json_expr "$field")" "$target"
       ;;
     shell-var)
-      sed -n "s/^${field}=\"\\([^\"]*\\)\"/\\1/p" "$REPO_ROOT/$path"
+      sed -n "s/^${field}=\"\\([^\"]*\\)\"/\\1/p" "$target"
       ;;
     yaml)
-      sed -n "s/^${field}: *\\([^ ]*\\).*$/\\1/p" "$REPO_ROOT/$path" | sed -n '1p'
+      sed -n "s/^${field}: *\\([^ ]*\\).*$/\\1/p" "$target" | sed -n '1p'
       ;;
     *)
       echo "error: unknown version field kind: $kind" >&2
@@ -56,6 +93,9 @@ write_field() {
   local path="$1" kind="$2" field="$3" value="$4"
   local tmp
   tmp="$(mktemp)"
+  local target
+  target="$(repo_file "$path")"
+  validate_field "$field"
   case "$kind" in
     json)
       # Rewrite only the line that carries the field. Round-tripping the file
@@ -64,22 +104,22 @@ write_field() {
       # the rest byte-identical. Reads and --check still go through jq.
       local pattern="^([[:space:]]*\"${field}\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")"
       local hits
-      hits="$(grep -cE "$pattern" "$REPO_ROOT/$path" || true)"
+      hits="$(grep -cE "$pattern" "$target" || true)"
       if [[ "$hits" != "1" ]]; then
         rm -f "$tmp"
         echo "error: expected exactly one \"$field\" line in $path (found $hits)" >&2
         exit 1
       fi
-      sed -E "s/${pattern}/\1${value}\2/" "$REPO_ROOT/$path" > "$tmp"
-      mv "$tmp" "$REPO_ROOT/$path"
+      sed -E "s/${pattern}/\1${value}\2/" "$target" > "$tmp"
+      mv "$tmp" "$target"
       ;;
     shell-var)
-      sed "s/^${field}=\"[^\"]*\"/${field}=\"$value\"/" "$REPO_ROOT/$path" > "$tmp"
-      mv "$tmp" "$REPO_ROOT/$path"
+      sed "s/^${field}=\"[^\"]*\"/${field}=\"$value\"/" "$target" > "$tmp"
+      mv "$tmp" "$target"
       ;;
     yaml)
-      sed "s/^${field}: .*$/${field}: $value/" "$REPO_ROOT/$path" > "$tmp"
-      mv "$tmp" "$REPO_ROOT/$path"
+      sed "s/^${field}: .*$/${field}: $value/" "$target" > "$tmp"
+      mv "$tmp" "$target"
       ;;
     *)
       rm -f "$tmp"

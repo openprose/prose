@@ -9,6 +9,41 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="$REPO_ROOT/.plugin-meta.json"
 
+# Manifest paths and pointers are data, not trusted shell or jq programs.
+# Reject traversal, symlink targets, and filter syntax outside the small
+# property/index grammar used by this repository.
+repo_file() {
+  local path="$1" parent base parent_abs
+  if [[ -z "$path" || "$path" == /* || "$path" =~ (^|/)\.\.?(/|$) || "$path" == *$'\n'* || "$path" == *$'\r'* ]]; then
+    echo "error: unsafe repository path: $path" >&2
+    exit 2
+  fi
+  parent="${path%/*}"
+  [[ "$parent" == "$path" ]] && parent="."
+  base="${path##*/}"
+  parent_abs="$(cd "$REPO_ROOT/$parent" 2>/dev/null && pwd -P)" || {
+    echo "error: repository path parent does not exist: $path" >&2
+    exit 2
+  }
+  case "$parent_abs" in
+    "$REPO_ROOT"|"$REPO_ROOT"/*) ;;
+    *) echo "error: repository path escapes checkout: $path" >&2; exit 2 ;;
+  esac
+  if [[ -L "$parent_abs/$base" ]]; then
+    echo "error: refusing symlink target: $path" >&2
+    exit 2
+  fi
+  printf '%s/%s\n' "$parent_abs" "$base"
+}
+
+validate_pointer() {
+  local pointer="$1"
+  if [[ ! "$pointer" =~ ^[A-Za-z_][A-Za-z0-9_]*(\[[0-9]+\]|\.[A-Za-z_][A-Za-z0-9_]*)*$ ]]; then
+    echo "error: unsafe jq pointer: $pointer" >&2
+    exit 2
+  fi
+}
+
 if [[ ! -f "$CONFIG" ]]; then
   echo "error: $CONFIG not found" >&2
   exit 2
@@ -19,20 +54,23 @@ mode="${1:-write}"
 pointer_to_jq() {
   # "interface.shortDescription"  -> ".interface.shortDescription"
   # "plugins[0].description"      -> ".plugins[0].description"
+  validate_pointer "$1"
   printf '.%s' "$1"
 }
 
 read_field() {
   local path="$1" jq_expr="$2"
-  jq -r "$jq_expr" "$REPO_ROOT/$path"
+  jq -r "$jq_expr" "$(repo_file "$path")"
 }
 
 write_field() {
   local path="$1" jq_expr="$2" value="$3"
   local tmp
   tmp="$(mktemp)"
-  jq --arg v "$value" "${jq_expr} = \$v" "$REPO_ROOT/$path" > "$tmp"
-  mv "$tmp" "$REPO_ROOT/$path"
+  local target
+  target="$(repo_file "$path")"
+  jq --arg v "$value" "${jq_expr} = \$v" "$target" > "$tmp"
+  mv "$tmp" "$target"
 }
 
 slots=(tagline shortDescription longDescription)

@@ -13,6 +13,37 @@ see-also:
 
 # Dependency Resolution
 
+## Security boundary
+
+An installed dependency is executable agent instruction, not trusted data. Treat
+dependency source, prompts, and generated artifacts as untrusted until the
+pinned commit has been reviewed. Runtime resolution must never fetch or execute
+a missing dependency, follow a URL from a `use` statement, or silently replace
+a pinned checkout with a newer one.
+
+Installers and harnesses MUST enforce these checks:
+
+- accept only the documented `host/owner/repo/path` grammar; reject empty
+  components, absolute paths, `.`/`..` components, NUL/newline characters, and
+  paths whose normalized result leaves the dependency checkout;
+- resolve the remaining path without following symlinks outside the pinned
+  repository, and reject a dependency path that escapes its checkout;
+- clone without submodules or repository hooks, and do not execute fetched
+  files as part of installation; installation only makes a reviewed, pinned
+  tree available for a later run;
+- require an exact full commit SHA in `prose.lock` before execution, verify
+  that the checked-out commit equals it, and make `--update` an explicit
+  operator action rather than an implicit runtime fallback; and
+- keep credentials and environment variables out of dependency prompts,
+  manifests, logs, reports, and bindings. A dependency may reference an
+  environment variable by name, but must never receive or serialize its raw
+  value.
+
+Pinning prevents version drift; it does not make a malicious or compromised
+pinned commit safe. Review dependency source and requested capabilities before
+running it, especially when it can read files, use network access, spawn
+sessions, or write repository files.
+
 OpenProse uses a git-native dependency model. `use` statements, dependency-like
 service names, and `pattern:` references can point at any explicit git host.
 Dependencies are cloned into `<openprose-root>/deps/`, pinned in `<openprose-root>/prose.lock`, and resolved from
