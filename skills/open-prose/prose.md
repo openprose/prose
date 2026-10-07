@@ -108,6 +108,13 @@ prose run github.com/alice/research --offline    # assert disk-only resolution
 must already be available in `<openprose-root>/deps/`. Runtime dependency resolution is always
 disk-only.
 
+Dependency installation is a supply-chain boundary. The installer must enforce
+the security requirements in `deps.md`: validate host/owner/repository
+components, require an approved immutable SHA before execution, verify the
+checkout after clone/fetch, and never place credentials in URLs, prompts, logs,
+or run state. A missing or unreviewed pin is a hard error, not an invitation to
+execute the repository's current `HEAD`.
+
 **When resolution fails:**
 
 When an identifier is not in `<openprose-root>/deps/`, report:
@@ -1078,7 +1085,7 @@ Run IDs default to local `<openprose-root>/runs/`. For cross-project references:
 | ---------------------------------- | ----------------------------------------------------------------- |
 | Bare ID (`20260406-201439-1a3369`) | `<openprose-root>/runs/20260406-201439-1a3369` (local project)              |
 | `~/{id}`                           | `~/.agents/prose/runs/{id}` (user scope)                                 |
-| Absolute path                      | Used as-is                                                        |
+| Absolute path                      | Accepted only beneath an explicitly approved OpenProse root; otherwise rejected |
 | Future: `repo:{repo}#{id}`         | Git-based resolution (team/cloud scenarios — not yet implemented) |
 
 ---

@@ -99,11 +99,19 @@ serialize the raw connection string.
 **Recommended setup:**
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+-- Supply authentication out-of-band through the database secret store or a
+-- protected password file; never put a real password in this document.
+CREATE USER openprose_agent;
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
 ```
+
+Do not use `trust` authentication, do not reuse a production account, and
+grant the role access only to the dedicated OpenProse database/schema. In
+production, require TLS and rotate credentials through the host's secret
+manager. Never place a connection string containing a password in shell
+history, prompts, logs, or run artifacts.
 
 ---
 
@@ -165,9 +173,9 @@ The fastest path to a running PostgreSQL instance:
 ```bash
 docker run -d \
   --name prose-pg \
+  --env-file ./secrets/postgres.env \
   -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -p 5432:5432 \
+  -p 127.0.0.1:5432:5432 \
   postgres:16
 ```
 

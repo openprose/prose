@@ -18,6 +18,35 @@ service names, and `pattern:` references can point at any explicit git host.
 Dependencies are cloned into `<openprose-root>/deps/`, pinned in `<openprose-root>/prose.lock`, and resolved from
 disk at runtime.
 
+## Security requirements
+
+Dependency installation is a supply-chain boundary. A dependency MUST NOT be
+executed merely because its name or repository URL is present in source.
+Before installing or updating a dependency, the operator must explicitly review
+the host, owner, repository, requested path, and immutable commit SHA. Hosts
+that are not approved by the project policy must be rejected rather than
+silently trusted.
+
+- Every installed dependency must have a full immutable commit SHA in
+  `<openprose-root>/prose.lock`; a newly discovered `HEAD` may be reported in
+  a preview, but must not be executable or committed as an unreviewed pin.
+- Installation must verify that the checkout is exactly the locked SHA after
+  clone/fetch and must fail closed on a missing, malformed, or mismatched pin.
+- Build clone URLs from validated host/owner/repository components. Never accept
+  credentials, shell metacharacters, or a userinfo component in a dependency
+  reference, and never print credential-helper output.
+- Use the user's configured credential helper only after explicit approval for
+  a private host. Do not copy credentials into URLs, prompts, run state, logs,
+  reports, or dependency metadata.
+- `--update` is an explicit, reviewable operation. It must not silently replace
+  a locked commit with the newest branch head or resolve a version conflict by
+  date alone; retain the old pin until the new commit has been reviewed and
+  tests pass.
+
+These requirements apply equally to direct and transitive dependencies. A
+lockfile is an integrity record, not an approval record: approval and pin
+verification both remain necessary.
+
 ---
 
 ## `use` Statement Parsing
@@ -134,7 +163,9 @@ Scans the project for dependency references and clones missing dependencies.
 4. For each unique `{host, owner, repo}`:
    a. If `<openprose-root>/deps/{host}/{owner}/{repo}/` does not exist, clone the repository using the host's normal git URL into `<openprose-root>/deps/{host}/{owner}/{repo}/`
    b. If `<openprose-root>/prose.lock` has a pinned SHA for this repo, checkout: `git checkout {sha}`
-   c. If no pinned SHA exists (new dependency), use HEAD and record the SHA
+   c. If no pinned SHA exists (new dependency), report the candidate SHA for
+      review and approval; do not execute the dependency or write an
+      unreviewed `HEAD` pin
 5. **Scan transitive dependencies** — scan all `*.prose.md` files within newly cloned repos in `<openprose-root>/deps/` for their own `use` statements
 6. **Cycle detection** — if a newly discovered dependency is already in the resolved set, skip it. If scanning reveals a cycle (A requires B requires A), error: `[Error] Circular dependency detected: A → B → A`
 7. **Repeat** from step 2 with any newly discovered dependencies until no new deps are found
@@ -157,39 +188,47 @@ All dependencies — direct and transitive — are pinned in the flat `<openpros
 
 ### Version Conflict Resolution
 
-If two dependencies require the same repo at different commits, `prose install` auto-resolves to the **newer SHA** (by commit date) and emits a warning:
+If two dependencies require the same repo at different commits, `prose install`
+must not auto-resolve to the **newer SHA** (by commit date). It emits a
+blocking conflict requiring an explicit override and review:
 
-This is a convenience policy, not proof that the newer dependency fits every
-caller. Treat the warning as review-required: inspect the affected dependency,
-run relevant tests, and commit the resulting `<openprose-root>/prose.lock` only when the newer
-version is acceptable.
+This is a security boundary, not a convenience warning: a newer commit is not
+proof that it fits every caller and may contain incompatible or malicious
+changes. Inspect the affected dependency, run relevant tests, and commit the
+resulting `<openprose-root>/prose.lock` only after an explicit choice.
 
 ```
-[Warning] Version conflict for alice/utils:
+[Error] Version conflict for alice/utils:
   Required by: your-project (a1b2c3d)
   Required by: bob/toolkit (f6e5d4c)
-  Resolved to: f6e5d4c (newer, 2026-04-01)
-  Override: manually edit <openprose-root>/prose.lock if needed
+  Resolution: blocked until an explicit override is reviewed
+  Override: choose and approve a commit, then update <openprose-root>/prose.lock
 ```
 
-This is not an error. The user can override by editing `<openprose-root>/prose.lock` directly.
+The user can override only through the reviewed install/update flow; direct
+lockfile edits must still pass pin and checkout verification.
 
 ### Private Repositories
 
-`prose install` uses the user's existing git credential helpers transparently. SSH keys, `gh` auth, `.netrc` — whatever git is configured to use for `github.com` works for `prose install`.
+`prose install` may use the user's existing git credential helpers only after
+explicit approval for the private host. SSH keys, `gh` auth, and `.netrc` must
+never be copied into dependency URLs, prompts, logs, or state artifacts.
 
 ---
 
 ## `prose install --update`
 
-Bumps all pinned SHAs to the latest HEAD of their default branch.
+Bumps pinned SHAs only as an explicit, reviewable change. It must not silently
+execute the latest default-branch HEAD or overwrite the existing lock before
+the new commit has been approved and tested.
 
 ### Algorithm
 
 1. For each `host/owner/repo` in `<openprose-root>/prose.lock`:
    a. Run `git fetch` in `<openprose-root>/deps/{host}/{owner}/{repo}/`
    b. Get the latest HEAD SHA
-   c. Run `git checkout {new-sha}`
+   c. Verify the candidate commit, obtain explicit approval, then run
+      `git checkout {new-sha}` and update the lockfile
 2. **Re-scan** for transitive dependencies (new versions may add or remove `use` statements)
 3. **Rewrite** `<openprose-root>/prose.lock` with updated SHAs
 
@@ -346,6 +385,6 @@ explicit "get me every declared dependency at its pinned SHA" command. Neither
 | Shorthands | `std/` → `github.com/openprose/prose/packages/std/`; `co/` → `github.com/openprose/prose/packages/co/` |
 | Clone strategy | Full clone (supports SHA checkout without refetch) |
 | Transitive deps | Multi-pass scan until stable (errors on cycles) |
-| Version conflicts | Auto-resolve to newer SHA with warning |
+| Version conflicts | Block until an explicit reviewed pin is chosen |
 | Runtime resolution | Disk only, no network |
 | Private repos | Uses existing git credentials |

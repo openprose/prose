@@ -13,6 +13,13 @@ node_modules/
 .agents/prose/deps/
 .agents/prose/runs/
 
+# Runtime configuration may contain database URLs, tokens, and other secrets.
+# Keep native and nested OpenProse roots out of version control.
+/.env
+**/.env
+!**/.env.example
+secrets/
+
 # Compiled OpenProse repository IR
 dist/prose/
 
