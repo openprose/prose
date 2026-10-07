@@ -95,14 +95,22 @@ serialize the raw connection string.
   agent context, do not use the PostgreSQL backend in that harness
 - Use a **dedicated database** for OpenProse, not your production systems
 - Create a **limited-privilege user** with access only to the `openprose` schema
+- Treat `prompt`, `summary`, `value`, and `metadata` columns as potentially
+  sensitive application data: redact secrets before inserting them and never
+  store connection strings, access tokens, or raw credential-helper output.
+- Keep database logging and backups under the same access controls as the
+  database itself; SQL visibility is not a substitute for redaction.
 
 **Recommended setup:**
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+CREATE USER openprose_agent;
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
+
+-- Set a strong password interactively, never in a checked-in script:
+\password openprose_agent
 ```
 
 ---
@@ -162,11 +170,17 @@ If your system has 10 parallel branches completing at once, PostgreSQL will be 5
 
 The fastest path to a running PostgreSQL instance:
 
+Set a strong local development password outside shell history first. Do not use
+`POSTGRES_HOST_AUTH_METHOD=trust`, a checked-in password, or a production
+database for this backend.
+
 ```bash
+read -rs POSTGRES_PASSWORD
+export POSTGRES_PASSWORD
 docker run -d \
   --name prose-pg \
   -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -e POSTGRES_PASSWORD \
   -p 5432:5432 \
   postgres:16
 ```

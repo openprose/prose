@@ -49,6 +49,24 @@ repository.
 Any git host works. Nothing in the resolver privileges GitHub — it's the
 common case, not a default.
 
+### Dependency trust and installation safety
+
+Dependencies are executable input. `prose install` is an explicit,
+approval-gated operation; it must not be triggered by `prose run`, a `use`
+statement, or content found in a fetched file. Before installing a new or
+changed dependency, show the caller the exact host/repository/path and the
+requested revision. Do not install an unpinned dependency for a production or
+automated run: resolve it once under review, record its immutable commit in
+`<openprose-root>/prose.lock`, and verify that checkout before execution.
+
+Only explicit host identifiers are valid dependency sources. Reject malformed
+hosts, path traversal, URLs embedded in repository paths, and symlink escapes
+from the dependency cache. Never pass git credentials, credential-helper
+output, or environment-variable values to a render, and never copy dependency
+contents into published bindings without the consuming contract declaring that
+output. A lockfile mismatch, missing pin, or changed content hash is a
+preflight failure, not a reason to silently use the newest revision.
+
 ### `std/` and `co/` Shorthands
 
 The OpenProse monorepo hosts two packages. Both get shorthands:

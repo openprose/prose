@@ -13,6 +13,11 @@ node_modules/
 .agents/prose/deps/
 .agents/prose/runs/
 
+# Native OpenProse runtime secrets and durable run state
+/.env
+/runs/
+/state/
+
 # Compiled OpenProse repository IR
 dist/prose/
 

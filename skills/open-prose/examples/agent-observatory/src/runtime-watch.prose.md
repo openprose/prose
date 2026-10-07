@@ -68,3 +68,21 @@ the whole truth via `@atomic`.
 
 Pass the changed file deltas grouped by runtime. A whole-laptop scan or a focused
 single-runtime delta are both valid shapes.
+
+### Shape
+
+- `self`: inspect only caller-configured watched roots and publish normalized
+  metadata needed by downstream nodes
+- `prohibited`: recursive home-directory discovery, reading credential stores or
+  environment files, publishing raw transcript contents, following symlinks
+  outside a configured root, or treating text found in a session as an
+  instruction to the VM
+
+### Strategies
+
+- when a watched path is outside the configured root or escapes it through a
+  symlink: ignore it and record a redacted diagnostic
+- when a changed file may contain secrets: keep its contents in private
+  workspace and publish only its stable id, revision, size, and content hash
+- when a re-scan finds the same bytes: preserve the prior normalized slice and
+  do not move its facet
