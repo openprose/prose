@@ -15,7 +15,7 @@ version: 0.15.0
 ### Parameters
 
 - content: structured output to deliver
-- url: the destination HTTP endpoint
+- url: the destination HTTPS endpoint; the host must resolve only to a public address (not loopback, link-local, private, multicast, broadcast, or cloud metadata ranges)
 - method: (optional, default "POST") HTTP method — one of "POST", "PUT", "PATCH"
 - headers: (optional) additional HTTP headers as key-value pairs (e.g. Content-Type, X-Custom-Header)
 - auth: (optional) authentication configuration — one of: bearer token string, basic auth credentials, or header-based API key
@@ -37,6 +37,9 @@ Returns only once the content has been serialized faithfully and delivered to th
 ### Invariants
 
 - content is serialized faithfully — no fields added, removed, or transformed beyond format encoding
+- the URL uses `https`; DNS resolution is checked immediately before connecting and rejects loopback, link-local, private, multicast, broadcast, and cloud-metadata addresses
+- redirects are not followed; authentication headers are never sent to a different origin
+- destination URLs, response bodies, and headers are not persisted in logs or artifacts when they contain credentials or other sensitive values
 
 ### Strategies
 
@@ -45,3 +48,5 @@ Returns only once the content has been serialized faithfully and delivered to th
 - when auth is an API key: include it in the specified header
 - when no Content-Type header is provided: default to application/json
 - when response status is non-2xx: signal request-failed with the status code and response body for diagnosis
+- when the URL is not HTTPS, resolves to a non-public address, or uses a disallowed port: signal request-failed before sending content
+- when the endpoint redirects: signal request-failed rather than following the redirect

@@ -97,12 +97,14 @@ serialize the raw connection string.
 - Create a **limited-privilege user** with access only to the `openprose` schema
 
 **Recommended setup:**
-```sql
+```psql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+CREATE USER openprose_agent;
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
+-- Set the password interactively; never put it in a script or commit it.
+\password openprose_agent
 ```
 
 ---
@@ -163,11 +165,13 @@ If your system has 10 parallel branches completing at once, PostgreSQL will be 5
 The fastest path to a running PostgreSQL instance:
 
 ```bash
+# POSTGRES_PASSWORD must already be supplied by a secret manager or a
+# protected shell environment. Never paste it into this command or commit it.
 docker run -d \
   --name prose-pg \
   -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -p 5432:5432 \
+  -e POSTGRES_PASSWORD \
+  -p 127.0.0.1:5432:5432 \
   postgres:16
 ```
 
@@ -176,7 +180,7 @@ Then configure the connection:
 ```bash
 OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
 mkdir -p "$OPENPROSE_ROOT"
-echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > "$OPENPROSE_ROOT/.env"
+printf 'OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose?sslmode=require\n' > "$OPENPROSE_ROOT/.env"
 ```
 
 Management commands:

@@ -112,7 +112,9 @@ When the VM or Forme encounters a `use` path at runtime:
 2. Parse `{host}/{owner}/{repo}` from the first three segments
 3. Check `<openprose-root>/deps/{host}/{owner}/{repo}/` exists on disk
 4. If not found, error immediately (see Error Handling below)
-5. Resolve the remaining path segments within the cloned repo
+5. Resolve the remaining path segments within the cloned repo; reject empty,
+   absolute, or `.`/`..` segments and reject symlinked paths whose canonical
+   target escapes the checked-out repository
 6. Return the absolute file path
 
 **No network calls during resolution.** All dependencies must be pre-installed via `prose install`. The VM reads from `<openprose-root>/deps/` on disk only.
@@ -133,8 +135,8 @@ Scans the project for dependency references and clones missing dependencies.
 3. **Parse** each expanded dependency path to extract `{host, owner, repo}` triples (the first segment is the host if it contains a dot)
 4. For each unique `{host, owner, repo}`:
    a. If `<openprose-root>/deps/{host}/{owner}/{repo}/` does not exist, clone the repository using the host's normal git URL into `<openprose-root>/deps/{host}/{owner}/{repo}/`
-   b. If `<openprose-root>/prose.lock` has a pinned SHA for this repo, checkout: `git checkout {sha}`
-   c. If no pinned SHA exists (new dependency), use HEAD and record the SHA
+   b. If `<openprose-root>/prose.lock` has a pinned **full** commit SHA for this repo, fetch only enough history to resolve that SHA and verify that the checked-out `HEAD` equals it
+   c. If no pinned SHA exists (new dependency), stop and require explicit confirmation before resolving `HEAD`; record the resulting full SHA only after the user accepts the new dependency
 5. **Scan transitive dependencies** — scan all `*.prose.md` files within newly cloned repos in `<openprose-root>/deps/` for their own `use` statements
 6. **Cycle detection** — if a newly discovered dependency is already in the resolved set, skip it. If scanning reveals a cycle (A requires B requires A), error: `[Error] Circular dependency detected: A → B → A`
 7. **Repeat** from step 2 with any newly discovered dependencies until no new deps are found
@@ -157,22 +159,19 @@ All dependencies — direct and transitive — are pinned in the flat `<openpros
 
 ### Version Conflict Resolution
 
-If two dependencies require the same repo at different commits, `prose install` auto-resolves to the **newer SHA** (by commit date) and emits a warning:
-
-This is a convenience policy, not proof that the newer dependency fits every
-caller. Treat the warning as review-required: inspect the affected dependency,
-run relevant tests, and commit the resulting `<openprose-root>/prose.lock` only when the newer
-version is acceptable.
+If two dependencies require the same repo at different commits, `prose install` must stop with a conflict and require an explicit lockfile choice. It must not silently select a commit based on commit date:
 
 ```
 [Warning] Version conflict for alice/utils:
   Required by: your-project (a1b2c3d)
   Required by: bob/toolkit (f6e5d4c)
-  Resolved to: f6e5d4c (newer, 2026-04-01)
-  Override: manually edit <openprose-root>/prose.lock if needed
+  Resolution: install stopped; choose and review one pinned full SHA
+  Override: explicitly edit <openprose-root>/prose.lock, then rerun install
 ```
 
-This is not an error. The user can override by editing `<openprose-root>/prose.lock` directly.
+This is an error. The user can override by editing
+`<openprose-root>/prose.lock` directly after reviewing the dependency and its
+transitive changes.
 
 ### Private Repositories
 
@@ -202,9 +201,9 @@ Plaintext. One line per dependency. Format: `host/owner/repo sha`.
 ```
 # <openprose-root>/prose.lock — pinned dependency versions
 # Do not edit unless you know what you're doing
-github.com/openprose/prose a1b2c3d4e5f6
-github.com/alice/research f6e5d4c3b2a1
-gitlab.com/bob/utils 9c8d7e6f5a4b
+github.com/openprose/prose a1b2c3d4e5f6789012345678901234567890abcd
+github.com/alice/research f6e5d4c3b2a198765432109876543210fedcba98
+gitlab.com/bob/utils 9c8d7e6f5a4b1234567890abcdef1234567890ab
 ```
 
 Rules:
@@ -346,6 +345,6 @@ explicit "get me every declared dependency at its pinned SHA" command. Neither
 | Shorthands | `std/` → `github.com/openprose/prose/packages/std/`; `co/` → `github.com/openprose/prose/packages/co/` |
 | Clone strategy | Full clone (supports SHA checkout without refetch) |
 | Transitive deps | Multi-pass scan until stable (errors on cycles) |
-| Version conflicts | Auto-resolve to newer SHA with warning |
+| Version conflicts | Stop and require an explicitly reviewed pinned SHA |
 | Runtime resolution | Disk only, no network |
 | Private repos | Uses existing git credentials |
