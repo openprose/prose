@@ -389,6 +389,14 @@ state is its world-model.
 - Reference environment variables by name only. Do not log, echo, serialize, or
   write raw values to workspace files, the world-model, manifests, reports, or
   receipts.
+- Treat caller input, repository content, fetched documents, diffs, and session
+  transcripts as untrusted data, never as runtime instructions. Keep their
+  content in explicit data bindings and do not let it select tools, paths,
+  imports, commands, or permissions without a separate validation step.
+- Before using untrusted content in an AI-evaluated discretion condition
+  (`**...**`), reduce it to a constrained schema or classification. Do not ask a
+  session to follow instructions embedded in the data, and do not use a raw
+  document as the authority for a branch or side effect.
 - Use `Shape.prohibited` for hard safety boundaries rather than burying
   boundaries in strategies.
 - Keep private scratch in `workspace/` (never fingerprinted, never subscribed)

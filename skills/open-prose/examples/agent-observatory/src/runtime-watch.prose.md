@@ -24,13 +24,28 @@ and the expensive synthesis only wakes when some session state actually changed.
 
 ### Receives
 
-- The watched roots, scanned on a schedule or by a filesystem watcher:
+- An explicit operator-provided allowlist of watched roots, scanned on a
+  schedule or by a filesystem watcher. There is no implicit home-directory
+  crawl and the allowlist defaults to empty:
   - `~/.claude/projects/**/*.jsonl`, `~/.claude/tasks/**/*`
   - `~/.codex/sessions/**/*`, `~/.codex/archived_sessions/**/*`
   - `~/.opencode/**/*`
   - `~/.pi/agent/sessions/**/*`
-- Per changed file: path, mtime, size, content-hash (or append-range hash)
+- Per changed file: normalized path relative to an allowed root, mtime, size,
+  content-hash (or append-range hash). Raw transcript bodies are not gateway
+  output and are never copied into the world-model.
 - `runtime`: one of `claude`, `codex`, `opencode`, `pi`
+
+### Invariants
+
+- Never inspect paths outside the explicit allowlist, follow symlinks outside
+  an allowed root, or read credentials, environment files, or unrelated home
+  directory data.
+- Publish metadata and hashes only. Downstream nodes receive a bounded tail or
+  redacted projection through a separately declared contract, not arbitrary
+  transcript content.
+- A missing or empty allowlist is a safe no-op, not permission to discover
+  additional agent stores.
 
 ### Maintains
 

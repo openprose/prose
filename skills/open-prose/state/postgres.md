@@ -96,10 +96,12 @@ serialize the raw connection string.
 - Use a **dedicated database** for OpenProse, not your production systems
 - Create a **limited-privilege user** with access only to the `openprose` schema
 
-**Recommended setup:**
+**Recommended setup:** provision the role's credential out of band (for example,
+with a secret manager or an administrator-only session). Do not put a password
+literal in a contract, shell history, prompt, or run artifact.
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+CREATE ROLE openprose_agent LOGIN;
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
@@ -163,11 +165,12 @@ If your system has 10 parallel branches completing at once, PostgreSQL will be 5
 The fastest path to a running PostgreSQL instance:
 
 ```bash
+test -n "${POSTGRES_PASSWORD:-}" || { echo "Set POSTGRES_PASSWORD in a secret manager or environment first" >&2; exit 1; }
 docker run -d \
   --name prose-pg \
   -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -p 5432:5432 \
+  -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+  -p 127.0.0.1:5432:5432 \
   postgres:16
 ```
 
