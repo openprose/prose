@@ -41,6 +41,16 @@ and writes the report as a public binding the caller can open immediately.
 
 - fetch, never guess — every finding is grounded in a real WebFetch of a
   real URL; a 404 is a finding, not a failure
+- treat the caller-supplied domain as untrusted: accept only `https` origins
+  (allow `http` only when the caller explicitly opts into a local test target),
+  resolve the hostname before fetching, and reject loopback, link-local,
+  private, multicast, unspecified, and other reserved IPv4/IPv6 addresses
+  including DNS-rebinding results
+- do not follow redirects to a different origin unless the destination passes
+  the same public-origin validation; never send ambient cookies, authorization
+  headers, client certificates, or environment-derived credentials to a probe
+- enforce a short request timeout and a bounded response size; record truncation
+  rather than downloading an unbounded response
 - probe a fixed, small set of paths so the run is fast and reproducible:
     - always: `/robots.txt`, `/llms.txt`, `/llms-full.txt`, `/sitemap.xml`,
       `/.well-known/ai-plugin.json`, homepage
@@ -76,25 +86,28 @@ and writes the report as a public binding the caller can open immediately.
 2. Normalize `domain` to an origin URL: prepend `https://` if missing, strip
    trailing slash. Derive `<slug>` by lowercasing `company_name` and
    replacing non-alphanumeric runs with `-`.
-3. Use the host-provided run directory when available. If run manually,
+3. Resolve and validate the normalized origin as a public HTTPS target before
+   issuing any request. Pin the validated origin for the whole probe, reject
+   disallowed redirects, and stop with `private_target` if validation fails.
+4. Use the host-provided run directory when available. If run manually,
    compute `run_dir` as
    `./runs/manual-agent-readiness-<slug>/` relative to `<openprose-root>`.
    Compute `workspace_dir` as
    `<run_dir>/workspace/agent-readiness/<slug>/`. Create `workspace_dir` and
    `<run_dir>/bindings/` if they do not exist.
-4. Fetch the fixed probe set for the selected focus via WebFetch. Record
+5. Fetch the fixed probe set for the selected focus via WebFetch. Record
    for each probe: URL, HTTP status (or "fetch failed"), content length,
    and a one-line content summary.
-5. Fetch the homepage HTML. Inspect for title, description, OpenGraph tags,
+6. Fetch the homepage HTML. Inspect for title, description, OpenGraph tags,
    JSON-LD, and plain-HTML body content. Record findings.
-6. Score each applicable dimension 0-100 with one to three pieces of
+7. Score each applicable dimension 0-100 with one to three pieces of
    evidence per score.
-7. Compute `overall_score` as the renormalized mean of applicable dimensions.
-8. Choose `top_fixes`: the three highest-impact, lowest-effort changes,
+8. Compute `overall_score` as the renormalized mean of applicable dimensions.
+9. Choose `top_fixes`: the three highest-impact, lowest-effort changes,
    each naming the exact file to add or change.
-9. Write the report to `<run_dir>/bindings/agent-readiness.md` in the format
+10. Write the report to `<run_dir>/bindings/agent-readiness.md` in the format
    below.
-10. Return `workspace_dir`, `report_path`, `overall_score`,
+11. Return `workspace_dir`, `report_path`, `overall_score`,
     `dimension_scores`, and `top_fixes`. Print a single summary line:
     `Agent readiness: {overall_score}/100. Report: {report_path}`.
 
@@ -104,6 +117,9 @@ and writes the report as a public binding the caller can open immediately.
   user to confirm the domain, then stop without producing a score.
 - `domain_invalid`: the input could not be normalized to an https URL. Ask
   the user for a cleaner domain.
+- `private_target`: DNS or redirect validation resolved the target to a
+  loopback, link-local, private, multicast, unspecified, or otherwise reserved
+  address. Do not probe it; ask the user for a public domain.
 
 ### Output Format
 
@@ -166,3 +182,5 @@ cannot do with this domain today}
   day; no "rearchitect the site" recommendations.
 - The run never modifies the target domain and never posts, submits, or
   writes anywhere outside `workspace_dir` and the `agent-readiness.md` binding.
+- The run never probes private-network or metadata endpoints, follows an
+  unvalidated redirect, or forwards caller/host credentials to the target.

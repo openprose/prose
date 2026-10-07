@@ -36,6 +36,10 @@ Returns a send confirmation once the provider has accepted the email:
 - auth-failed: the EMAIL_API_KEY is invalid, expired, or lacks send permission
 - provider-not-configured: EMAIL_PROVIDER is not set or is not a recognized value
 - missing-from: neither from_email nor EMAIL_FROM_ADDRESS is set — cannot send without a sender
+- invalid-header: an address, display name, or subject contains a newline or
+  otherwise fails strict email-header validation
+- insecure-transport: a non-local SMTP connection does not use TLS, or an API
+  request is not made over HTTPS
 
 ### Environment
 
@@ -53,6 +57,14 @@ Returns a send confirmation once the provider has accepted the email:
 
 - the html body is sent exactly as provided — no rewriting, no stripping, no wrapping
 - if reply_to is provided, the Reply-To header is always set — never silently drop it
+- validate `to`, `cc`, `bcc`, `from_email`, `reply_to`, and the subject as
+  structured values before constructing headers; reject CR/LF and do not allow
+  header injection
+- use HTTPS for API providers and TLS for non-local SMTP; `SMTP_SECURE=false`
+  is permitted only for an explicitly local development host, never for a
+  remote SMTP hostname
+- do not expose API keys, SMTP credentials, or full message contents in errors
+  or logs; bound recipient counts and attachment sizes before sending
 
 ### Strategies
 
@@ -60,6 +72,8 @@ Returns a send confirmation once the provider has accepted the email:
 - for local development, pair with Mailpit (localhost:1025, no auth, SMTP_SECURE=false) for a local inbox UI at http://localhost:8025
 - when to is a list: send a single email with all addresses in the To field — do not send separate emails per recipient
 - when attachments are provided: encode as multipart MIME with the HTML body as the primary part
+- when `SMTP_HOST` is not an explicitly local development host and
+  `SMTP_SECURE` is false: signal `insecure-transport` before connecting
 
 ### SMTP implementation (primary)
 
