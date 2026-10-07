@@ -99,7 +99,7 @@ serialize the raw connection string.
 **Recommended setup:**
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER openprose_agent WITH PASSWORD 'changeme';
+CREATE USER openprose_agent WITH PASSWORD '<generate-and-store-a-unique-password>';
 CREATE SCHEMA openprose AUTHORIZATION openprose_agent;
 GRANT ALL ON SCHEMA openprose TO openprose_agent;
 -- User can only access the openprose schema, nothing else
@@ -162,21 +162,41 @@ If your system has 10 parallel branches completing at once, PostgreSQL will be 5
 
 The fastest path to a running PostgreSQL instance:
 
+Do not use PostgreSQL's `trust` authentication for a shared or
+network-reachable instance. For a local development instance, bind the port to
+loopback and use a unique password supplied through a protected env file (kept
+outside git):
+
 ```bash
+umask 077
+OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
+mkdir -p "$OPENPROSE_ROOT"
+printf 'POSTGRES_DB=prose\nPOSTGRES_USER=openprose_agent\nPOSTGRES_PASSWORD=%s\n' \
+  "$(openssl rand -hex 32)" > "$OPENPROSE_ROOT/.postgres.env"
 docker run -d \
   --name prose-pg \
-  -e POSTGRES_DB=prose \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -p 5432:5432 \
+  --env-file "$OPENPROSE_ROOT/.postgres.env" \
+  -p 127.0.0.1:5432:5432 \
   postgres:16
 ```
+
+Treat `.postgres.env` as a secret: do not commit it, print it, or paste its
+contents into prompts or reports. Configure the matching connection string in
+the local OpenProse `.env` using your secret-management practice; never use a
+sample password in a real deployment.
 
 Then configure the connection:
 
 ```bash
 OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
 mkdir -p "$OPENPROSE_ROOT"
-echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > "$OPENPROSE_ROOT/.env"
+umask 077
+# Set OPENPROSE_POSTGRES_URL locally to the generated user's URL. Do not put
+# the real password in this document, shell history, or a committed file.
+# Example shape only:
+# OPENPROSE_POSTGRES_URL=postgresql://openprose_agent:<password>@127.0.0.1:5432/prose
+touch "$OPENPROSE_ROOT/.env"
+chmod 600 "$OPENPROSE_ROOT/.env"
 ```
 
 Management commands:

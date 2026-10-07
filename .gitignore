@@ -9,7 +9,10 @@ node_modules/
 *.tsbuildinfo
 
 # Current OpenProse generated state
+.env
 .agents/prose/.env
+.agents/prose/.postgres.env
+.postgres.env
 .agents/prose/deps/
 .agents/prose/runs/
 

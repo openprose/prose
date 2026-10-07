@@ -115,6 +115,27 @@ When the VM or Forme encounters a `use` path at runtime:
 5. Resolve the remaining path segments within the cloned repo
 6. Return the absolute file path
 
+### Security boundaries
+
+Dependency sources are executable agent instructions, not passive data. The
+installer and resolver MUST treat repository names and in-repository paths as
+untrusted input:
+
+- reject absolute paths and any path segment equal to `.` or `..` before joining
+  a dependency path to `<openprose-root>/deps/`;
+- after normalization, require the resolved path to remain below the pinned
+  repository directory (never follow a path outside that clone);
+- do not execute a newly installed dependency automatically. Review the pinned
+  source and its requested tools, skills, environment, and network behavior
+  before running it;
+- use narrowly scoped, read-only credentials for installation where possible,
+  and never put credential material in `prose.lock`, source snapshots, or run
+  artifacts.
+
+These checks apply to explicit hosts and to the `std/` and `co/` shorthands.
+Pinning a commit makes resolution reproducible; it does not make the pinned
+source trustworthy.
+
 **No network calls during resolution.** All dependencies must be pre-installed via `prose install`. The VM reads from `<openprose-root>/deps/` on disk only.
 
 ---
