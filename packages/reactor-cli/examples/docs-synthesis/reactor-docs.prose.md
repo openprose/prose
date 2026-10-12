@@ -1,0 +1,52 @@
+---
+name: reactor-docs
+kind: responsibility
+---
+
+### Goal
+
+Maintain the set of pending documentation edits for the `reactor` section of the
+public docs site (`content/docs/reactor/`), each drawn from a merged PR that
+changed harness behavior or concepts and each traceable to that PR. This node
+produces pointers — which page is now at risk and why — not the edits themselves;
+drafting the actual `.mdx` change is the actuator's job.
+
+The `reactor` section has these pages (target a pending edit at one of them):
+index, the-dag-and-compile, world-model-and-fingerprints, reconciler-and-receipts,
+continuity-and-ingestion.
+
+### Requires
+
+- the reactor-signal facet of change-signal (the only wake source: a reactor
+  doc-impact signal moved)
+
+### Maintains
+
+The pending-edit set for the `reactor` section. Material: the edit set and, per
+edit, its stable id, the target page slug (one of the section's pages), a one-line
+description of what is now stale and how to update it, and the PR number it was
+derived from; plus the open count. The recorded time is immaterial. The set moves
+only when an edit's target, description, or status changes, or an edit is added or
+cleared; a PR that introduces no new reactor doc-impact leaves the set unchanged.
+
+Postcondition: every pending edit cites the PR number it was derived from and names
+a page that exists in the `reactor` section.
+
+#### reactor-pending
+The pending edits for the `reactor` section, each with its target page,
+description, and cited PR. Subscribed to by docs-pr.
+
+### Continuity
+
+- input-driven: wake only when the reactor-signal facet moves. A PR that changed no
+  harness behavior never moves this input, so this section stays silent for it
+  (memo-skip at zero cost).
+
+### Invariants
+
+- This render is a bounded transform over the reactor-signal it was woken with and
+  this node's prior pending-edit set. Add, update, or clear the one affected edit;
+  pick the target page from the section's known page list above. Never run git,
+  read the docs repository, scan the filesystem, or run shell commands. Complete in
+  a few steps.
+- The only writable surface is this node's published world-model.
