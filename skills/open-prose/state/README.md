@@ -85,6 +85,7 @@ history — still canonical, just ephemeral.
 ## Contents
 
 - `filesystem.md` — file-based state; the **normative reference** for the canonical world-model artifact layout, deterministic serialization, and the receipt ledger
+- `execution-provenance.md` — host-agnostic execution-provenance profile; normative rules distinguishing supplied inputs, observed access telemetry, and worker-reported review scope across initial and follow-up handoffs
 - `in-context.md` — ephemeral state held in the LLM context window; canonical world-model + ledger live in conversation history, lost when the session ends
 - `sqlite.md` — SQLite-backed persistence; receipt ledger + content-addressed world-model versioning, with SQL as a derived query projection
 - `postgres.md` — PostgreSQL-backed persistence; the same ledger + world-model versioning for multi-agent and multi-host systems, with SQL/vector projections for query

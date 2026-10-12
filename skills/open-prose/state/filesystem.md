@@ -78,8 +78,12 @@ artifact, never the truth.
 │       │   │   ├── raw-results.md          # Intermediate data (e.g. raw poll w/ fetched_at)
 │       │   │   └── __delegate/             # Runtime delegation state (if any)
 │       │   │       └── {delegate}/
+│       │   │           ├── handoffs/        # Pre-dispatch provenance records (execution-provenance.md)
+│       │   │           │   ├── 001.json     # Initial dispatch handoff (supplied inputs + task)
+│       │   │           │   └── 002.json     # Permitted follow-up handoffs (incremental inputs)
 │       │   │           ├── {id}.md          # Request payload
-│       │   │           └── {id}-response.md # Response payload
+│       │   │           ├── {id}-response.md # Response payload + reported review scope
+│       │   │           └── observed_access.jsonl # Optional host tool telemetry (if supported)
 │       │   ├── critic/
 │       │   │   └── evaluation.md
 │       │   └── synthesizer/
@@ -537,8 +541,10 @@ To resume an interrupted run:
 | `sources/*.prose.md` | the compile phase | Before execution |
 | `world-model/caller/*.md` | VM | At entry / gateway boot |
 | `workspace/{node}/*` | the render | During the render |
+| `workspace/{node}/__delegate/{delegate}/handoffs/{seq}.json` | the render / VM | Contemporaneously before dispatch (pre-dispatch record) |
 | `workspace/{node}/__delegate/{delegate}/{id}.md` | the render | Before delegation yield |
-| `workspace/{node}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |
+| `workspace/{node}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes (includes worker review scope) |
+| `workspace/{node}/__delegate/{delegate}/observed_access.jsonl` | Host adapter | As tool calls occur (optional observed access telemetry) |
 | `world-model/{node}/*` + `.version` | VM (`commit_world_model`) | On a `rendered` receipt with a moved fingerprint |
 | `receipts/{node}.jsonl` | VM | After each render or skip |
 | `vm.log.md` | VM | After each event |

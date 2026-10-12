@@ -122,6 +122,8 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
     - (deep only) manifest_summary: execution order and wiring from forme.manifest.json
     - (deep only) service_outputs: map of service name to first 500 chars of each binding
     - (deep only) workspace_artifacts: map of service name to list of files in workspace
+    - (deep only) handoff_provenance: map of delegate name to pre-dispatch handoffs (supplied inputs, versions, sequence) and reported review scopes
+    - (deep only) observed_telemetry: map of delegate name to observed tool access events, or "unknown" if host telemetry was not captured
     - (deep only) error_details: contents of any `__error.md` files
 
 ### Errors
@@ -164,6 +166,10 @@ Apply judgment to the extraction. Score runtime fidelity and task effectiveness 
 - when scoring: use the full 0-100 range. A perfect run scores 95-100, not 100 (reserve 100 for extraordinary cases). A run with minor issues scores 70-85. A run with significant problems scores 40-69. A fundamentally broken run scores below 40.
 - when a run failed but produced partial output: evaluate what exists. A failed run can still have high task effectiveness if the partial output is useful.
 - when evidence conflicts: note the conflict explicitly in flags rather than silently resolving it
+- when evaluating provenance: distinguish supplied inputs (from handoffs/*.json) from worker-reported review scope ({id}-response.md) and observed access events (observed_access.jsonl). Never treat a supplied input tuple or tool-level file read as proof of understanding, and never treat an agent report as host authentication.
+- when a delegate output cites an input missing from contemporaneous pre-dispatch handoff records: flag unrecorded-handoff (critical). Expose the missing handoff gap rather than retroactively backfilling it.
+- when an input is declared not_read or integrity_check_only: verify downstream tasks did not treat it as semantically evaluated; flag supplied-unreviewed if subsequent decisions falsely assume vetting.
+- when host tool telemetry is absent: record telemetry status as unknown; do not synthesize or assume tool events from worker return text.
 
 ---
 
