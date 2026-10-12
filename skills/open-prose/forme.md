@@ -253,6 +253,56 @@ topology's `edges` to schedule and propagate.
 
 ---
 
+## Pattern Expansion
+
+Patterns are compile-time abstractions: slots, configuration parameters, invariants,
+and delegation rules that describe how a set of roles or renders coordinate. By the
+time the run-phase reconciler executes, patterns are completely expanded into
+concrete nodes and delegation steps.
+
+### The Expansion Lifecycle
+
+When Forme processes a contract containing a `### Patterns` section, it performs
+compile-time expansion in five steps:
+
+1. **Resolution:**
+   Forme resolves the pattern named in `pattern:`. It first checks for a local
+   `kind: pattern` contract in the package or repository. If not found locally, it
+   resolves the pattern reference through installed dependencies (under
+   `<openprose-root>/deps/` per `deps.md`) or standard library shorthands
+   (`std/patterns/...`). An explicit `use "std/patterns/{name}"` declaration
+   establishes a local alias that `pattern:` may reference by its unqualified name.
+
+2. **Slot Validation:**
+   Forme inspects the target pattern's declared `### Slots`. Every declared slot
+   must be bound in the instance's `with:` block. Forme verifies that each bound
+   slot references a valid responsibility, function, or nested pattern instance
+   available in scope. Unbound or mismatched slots are surfaced as compile-time
+   diagnostics (`unsatisfied-slot`).
+
+3. **Config Validation:**
+   Forme validates the instance's `config:` block against the pattern's declared
+   `### Config` section. Any declared defaults in `### Config` are applied for
+   omitted optional parameters; missing required values or type mismatches trigger
+   compile-time validation errors.
+
+4. **Instantiation & Delegation Lowering:**
+   The instance's `name:` becomes the assigned identifier for the expanded unit.
+   Forme lowers the pattern's `### Delegation` block (ProseScript) into the
+   concrete execution logic of the expanded unit, substituting the bound slot
+   references and validated config values. In `### Execution`, callers invoke
+   this expanded unit via ProseScript `call {name}`.
+
+5. **Nesting and Cycle Prevention:**
+   Patterns nest cleanly: a slot in `with:` may be filled by another inline
+   pattern instantiation. Forme resolves and expands nested patterns **inside-out**
+   (the innermost leaf pattern expands first, then supplies its expanded node to
+   the outer slot). **Recursive patterns are strictly prohibited:** Forme checks
+   that pattern instantiations form a directed acyclic hierarchy and halts
+   compilation if any pattern directly or transitively references itself.
+
+---
+
 ## What Forme retired
 
 Forme used to be a SKILL-phase dependency-injection container that wired
