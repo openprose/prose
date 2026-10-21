@@ -8,6 +8,6 @@
     "test:skill": "vitest run tests/open-prose"
   },
   "devDependencies": {
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.12"
   }
 }
