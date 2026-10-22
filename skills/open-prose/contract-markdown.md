@@ -701,9 +701,15 @@ Rules:
   `call`s. Node-level declarations are *additive*, not exclusive.
 - The compiler resolves each declared skill by looking, in order, in:
   1. The project's `./skills/` directory.
-  2. `~/.claude/skills/`.
-  3. `~/.codex/skills/`.
-  4. `~/.agents/skills/`.
+  2. The project's `./.github/skills/` directory.
+  3. The project's `./.agents/skills/` directory.
+  4. The project's `./.claude/skills/` directory.
+  5. `~/.claude/skills/`.
+  6. `~/.codex/skills/`.
+  7. `~/.copilot/skills/`.
+  8. `~/.agents/skills/`.
+- Within each root, check flat (`<name>`) before namespaced
+  (`<namespace>/<name>`) layout; the first matching directory wins.
 - If a declared skill cannot be resolved in any of those paths, `prose compile`
   fails closed with a `skill_unresolved` diagnostic naming the skill and the
   paths that were searched.
@@ -763,6 +769,13 @@ Rules:
   registry reports `tool_unresolved`.
 - `prose compile` fails closed when any `tool_invalid`, `tool_unsupported_kind`,
   or `tool_unresolved` diagnostic is emitted.
+
+For Copilot CLI/SDK, the MCP registry is the active session's advertised server
+names. Plugin servers and session-scoped `--additional-mcp-config` or SDK
+`mcpServers` entries count only when advertised by the host; a config-file
+entry alone is not proof of availability. If the host does not expose the
+required registration, report `tool_unresolved`. Do not contact or introspect
+the server to guess whether it is registered.
 
 The compiler program implements this resolution rule; see
 `skills/open-prose/compiler/index.prose.md` (`tools_resolver`) for the

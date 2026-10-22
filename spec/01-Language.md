@@ -320,6 +320,7 @@ the abstract VM primitives onto real capabilities:
 | `read_state` / `write_state` | Read and write run state through the selected backend (`<openprose-root>/runs/{id}/` artifacts and durable records) |
 | `copy_binding` | Publish a declared output through the active backend (filesystem writes the canonical artifact to `world-model/` and signs a receipt; never publishes undeclared scratch) |
 | `check_env` | Confirm an environment variable exists without exposing its value |
+| `check_tool` | Confirm a declared CLI executable is on PATH or an MCP server is in the active host registry, without executing or contacting it |
 
 Codex-style and Claude Code-style coding agents are the primary documented hosts.
 There is no `prose` binary that forwards to a separate harness: the SKILL-loaded
@@ -437,7 +438,7 @@ Canonical sections include:
 | `### Invariants` | responsibility, function, pattern | Properties that hold regardless of outcome |
 | `### Strategies` | responsibility, function, test | Judgment rules and edge-case guidance |
 | `### Environment` | responsibility, function | Required runtime variables, checked by name only |
-| `### Skills` | responsibility, function | Agent harness skills the component requires, as `namespace:name`; resolved fail-closed against `./skills/`, `~/.claude/skills/`, `~/.codex/skills/`, `~/.agents/skills/` |
+| `### Skills` | responsibility, function | Agent harness skills the component requires, as `namespace:name`; resolved fail-closed in order against `./skills/`, `./.github/skills/`, `./.agents/skills/`, `./.claude/skills/`, `~/.claude/skills/`, `~/.codex/skills/`, `~/.copilot/skills/`, `~/.agents/skills/` |
 | `### Tools` | responsibility, function | Host tools (`cli:<name>`, `mcp:<name>`) declared by name only |
 | `### Runtime` | responsibility, function | Execution hints such as `model` |
 | `### Shape` | responsibility, function | Capability boundaries: self, delegates, prohibited work |

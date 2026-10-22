@@ -240,6 +240,23 @@ own tools:
 | `check_env` | Confirm an environment variable exists without exposing its value |
 | `check_tool` | Confirm a declared host tool exists without installing, modifying, or running it |
 
+On Copilot CLI/SDK, map `spawn_session` to `task` with
+`agent_type: "general-purpose"` so a render can write its declared workspace.
+Use the host's `model` option for a declared model when supported; report an
+unsupported override rather than silently substituting one. Independent
+`task` calls in the same host turn can run concurrently. When the host exposes
+`mode: "background"`, await the agent's result before publishing its outputs.
+The host's filesystem tools realize state reads, writes and publication; an
+inline fallback still owes the complete run-state envelope.
+
+Map questions to the host's `ask_user` tool. Copilot SDK hosts enable the
+question-and-answer path with `onUserInputRequest`. `copilot -p` is
+non-interactive; `--no-ask-user` disables the question tool. If the current
+surface cannot collect missing required caller inputs, record them in the
+active backend event store and stop before spawning a render. Never invent
+required values or report success for a blocked run. A final question in
+prompt mode does not pause and resume execution.
+
 ---
 
 ## Directory Structure
@@ -353,7 +370,7 @@ The manifest's Caller Interface lists what the run requires. Bind these values:
 | CLI arguments (`prose run research.prose.md --question "..."`)  | Bind immediately                                      |
 | Config file (`<openprose-root>/.env` or project-level config)             | Bind immediately                                      |
 | Pre-supplied by a calling render (if this is a nested invocation) | Bind immediately                                    |
-| No value available                                               | Pause execution, prompt user via `ask_user` |
+| No value available                                               | Pause and collect it via `ask_user`; if the host cannot collect input, record the missing input and stop before rendering |
 
 Write each bound input to `world-model/caller/{name}.md`:
 
@@ -488,7 +505,7 @@ Otherwise, the subagent has completed. The VM:
 
 #### 4d. Parallel Execution
 
-If the manifest notes that nodes can render concurrently (no subscription edges between them), spawn multiple Task calls in a single response:
+If the manifest notes that nodes can render concurrently (no subscription edges between them), start multiple `spawn_session` calls in a single host turn:
 
 ```
 // Nodes with no mutual dependencies — spawn simultaneously
@@ -683,9 +700,9 @@ spawn_session({
 })
 ```
 
-Hosts may spell this differently (`Task`, `spawn_agent`, `run_subagent`, or a
-dedicated render runner). The required behavior is isolation plus access to the
-declared input paths and workspace path.
+Hosts may spell this differently (`Task`, `spawn_agent`, Copilot CLI/SDK `task`,
+`run_subagent`, or a dedicated render runner). The required behavior is
+isolation plus access to the declared input paths and workspace path.
 
 ### Parallel Execution
 
@@ -959,7 +976,7 @@ At run start, the VM resolves each `requires` entry:
 | Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
 | Value provided via config file                        | Bind immediately                                    |
 | Value provided by a calling render (nested invocation) | Bind immediately                                   |
-| No value available                                    | Prompt user via `ask_user`, bind response           |
+| No value available                                    | Collect it via `ask_user` and bind the response; if unavailable, record the missing input and stop before rendering |
 
 ### Writing Input Bindings
 
@@ -1180,6 +1197,14 @@ actions.
   session. Log the failure to the active backend event store as
   `N→ node ✗ missing-tool:{kind}:{name}`.
 
+For Copilot CLI/SDK, the MCP registry is the active session's advertised server
+names. This includes plugin servers and session-scoped
+`--additional-mcp-config` or SDK `mcpServers` entries only when advertised by
+the host. A config-file entry alone does not prove availability. If the host
+does not expose the required registration, compile fails with `tool_unresolved`
+and runtime preflight reports `missing-tool:mcp:{name}`; do not contact or
+introspect the server to guess its registration.
+
 OpenProse never installs, modifies, upgrades, or removes host tools. Installing
 and authenticating tools belongs to the host/user outside the VM.
 
@@ -1294,7 +1319,7 @@ function execute(manifest, inputs?):
   2. Bind caller inputs:
      - From CLI args, config, or a calling render
      - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if the root source changed
-     - Prompt user (`ask_user`) for any missing required inputs
+     - Collect missing required inputs via `ask_user`; if the host cannot collect them, record the missing inputs and stop before rendering
      - Write each to the active backend binding store (filesystem: world-model/caller/{name}.md with structured metadata for run types)
      - Record upstream in the backend event header for any run-typed inputs
   3. Initialize backend storage for each node (filesystem: workspace/ and world-model/ directories)

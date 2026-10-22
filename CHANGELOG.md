@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Document Copilot CLI/SDK render and input primitives, session MCP registration,
+  and deterministic declared-skill discovery in Copilot project and personal
+  roots without installing host capabilities. Already-resolved names without
+  duplicates retain their previous selection; newly searched roots can resolve
+  missing skills. With duplicate names, project `.github/skills`, `.agents/skills`
+  or `.claude/skills` copies precede any personal copy, and `~/.copilot/skills`
+  precedes `~/.agents/skills`, so an existing declaration can select a different
+  copy.
+
 ## [0.18.1] - 2026-10-01 — open-prose skill & plugin
 
 ### Changed
