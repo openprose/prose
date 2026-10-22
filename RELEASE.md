@@ -13,8 +13,10 @@ are out of scope here:
   workflow, release preflight, and CLI release checks) are all gone.
 
 The single remaining track here is **`skill`** — the open-prose SKILL plus the
-Claude + Codex plugin manifests that deliver it (`skills/open-prose/SKILL.md`,
-`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`). These move
+Claude + Codex + Copilot plugin manifests that deliver it (`skills/open-prose/SKILL.md`,
+`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`,
+`.github/plugin/plugin.json`, and the plugin version in
+`.github/plugin/marketplace.json`). These move
 **together**: the Claude Code marketplace deduplicates by manifest version, so a
 skill change only reaches plugin users when the manifest version advances.
 Machine compatibility is a separate signal — `SKILL.md`'s `runtime_contract` —
@@ -79,3 +81,30 @@ Claude Code marketplace:
 Codex Plugin Directory submission is staged through `.codex-plugin/`,
 `.agents/plugins/marketplace.json`, and `assets/plugin/` once the public
 submission flow opens.
+
+GitHub Copilot marketplace:
+
+- Catalog: `.github/plugin/marketplace.json`
+- Plugin manifest: `.github/plugin/plugin.json` (legacy Copilot format)
+- Marketplace name: `openprose`
+- Plugin name: `open-prose`
+- Version: the same `skill` track as the Claude and Codex envelopes
+
+Users register this repository's marketplace directly; a separate central
+marketplace submission is not required:
+
+```bash
+copilot plugin marketplace add openprose/prose
+copilot plugin install open-prose@openprose
+```
+
+For a reproducible release install, append `#<full-commit-sha>` to
+`openprose/prose` when registering the marketplace, using the commit behind the
+`skill-vX.Y.Z` tag. Existing users refresh the catalog with
+`copilot plugin marketplace update openprose`, then update the plugin with
+`copilot plugin update open-prose@openprose`.
+
+The Copilot envelope is additive. Do not replace it with a root Agent Plugins
+`plugin.json` without separately checking client precedence and preserving
+Codex's interface metadata. `Plugin Manifest` CI validates all three envelopes
+and performs a keyless Copilot install with disposable configuration.

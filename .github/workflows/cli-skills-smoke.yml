@@ -37,6 +37,7 @@ jobs:
               --copy \
               --full-depth \
               --agent codex \
+              --agent github-copilot \
               --agent claude-code
 
           test -f "$temp_home/.agents/skills/open-prose/SKILL.md"

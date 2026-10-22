@@ -4,12 +4,15 @@
   "longDescription": "Contract authoring is expressing intent by composing requirements. State what an agent must accomplish, which conditions it must satisfy, and where it can choose its approach. Reusable Markdown contracts provide the building blocks; composition determines how their requirements apply together. The public OpenProse skill supplies Contract Markdown and ProseScript instructions for a compatible agent host. Tools, permissions, execution evidence, and enforcement depend on that host. The plugin activates on `prose ...`, on `.prose.md` files, and on requests for reusable multi-agent orchestration.",
   "targets": {
     "tagline": [
-      { "path": ".claude-plugin/marketplace.json", "pointer": "metadata.description" }
+      { "path": ".claude-plugin/marketplace.json", "pointer": "metadata.description" },
+      { "path": ".github/plugin/marketplace.json", "pointer": "metadata.description" }
     ],
     "shortDescription": [
       { "path": ".claude-plugin/plugin.json",       "pointer": "description" },
       { "path": ".codex-plugin/plugin.json",        "pointer": "description" },
       { "path": ".codex-plugin/plugin.json",        "pointer": "interface.shortDescription" },
+      { "path": ".github/plugin/plugin.json",       "pointer": "description" },
+      { "path": ".github/plugin/marketplace.json",  "pointer": "plugins[0].description" },
       { "path": ".claude-plugin/marketplace.json",  "pointer": "plugins[0].description" },
       { "path": ".agents/plugins/marketplace.json", "pointer": "plugins[0].description" }
     ],

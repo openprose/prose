@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Copilot-native plugin and marketplace envelopes, synchronized release metadata,
+  keyless installation checks, and Copilot installation guidance. VM semantics
+  and the Claude and Codex envelopes are unchanged.
+
 ## [0.18.1] - 2026-10-01 — open-prose skill & plugin
 
 ### Changed

@@ -13,8 +13,42 @@ An agent performs the work, and an evaluator assesses whether the contract’s r
 npx skills add openprose/prose
 ```
 
-Installs as a skill for any Prose Complete coding agent: Claude Code, Codex
-CLI, OpenCode, Amp.
+Installs as a skill for coding agents including Claude Code, Codex CLI,
+GitHub Copilot, OpenCode, and Amp. Running a contract requires a Prose Complete
+host with the capabilities described below; installing the skill alone does
+not establish runtime conformance.
+
+### GitHub Copilot
+
+For Copilot CLI, install the plugin through its marketplace:
+
+```bash
+copilot plugin marketplace add openprose/prose
+copilot plugin install open-prose@openprose
+copilot skill list
+```
+
+Start a new session, then enter `prose run <file.prose.md>` in chat. The session
+interprets the instruction; do not run a shell command named `prose`. In the
+GitHub Copilot app, use **Customize > Plugins** to manage plugins.
+
+For a skill-only install, select Copilot explicitly:
+
+```bash
+npx skills add openprose/prose --skill open-prose --agent github-copilot
+```
+
+Other Copilot surfaces have their own discovery configuration:
+
+| Surface | Installation or discovery |
+| --- | --- |
+| VS Code | Install through [agent plugins](https://code.visualstudio.com/docs/agent-customization/agent-plugins), or use the skill-only install above. Supported skill locations include `.github/skills/` and `.agents/skills/` |
+| Copilot cloud agent | Register the marketplace with `extraKnownMarketplaces` and enable `open-prose@openprose` in the consuming repository's `.github/copilot/settings.json`; see [Copilot plugins](https://docs.github.com/en/copilot/concepts/agents/about-plugins) |
+| Copilot SDK (`@github/copilot-sdk`) | Load a local plugin checkout with `pluginDirectories` or `--plugin-dir`, or its `skills/` directory with `skillDirectories`; see [plugin directories](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/plugin-directories) |
+
+These paths make the skill discoverable. They do not supply missing subagents,
+user input, state storage, or a continuously running harness, and they do not
+override host permissions or organization policy.
 
 ## What you'll do when the skill activates
 

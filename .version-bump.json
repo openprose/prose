@@ -2,10 +2,12 @@
   "$comment": "OpenProse version surfaces. bump-version.sh keeps each track internally consistent. Only the SKILL/plugin track is released here: the Reactor harness (@openprose/reactor*) is released from github.com/openprose/reactor, and @openprose/prose-cli has been removed from the repo. See RELEASE.md.",
   "tracks": {
     "skill": {
-      "description": "The open-prose SKILL and the Claude + Codex plugin envelopes that deliver it. Locked together because the Claude Code marketplace deduplicates by manifest version: skill changes only reach plugin users when the manifest version advances, so the two plugin.json files and SKILL.md must move as one. Machine compatibility is carried separately by SKILL.md's runtime_contract, not by this X.Y.Z.",
+      "description": "The open-prose SKILL and the Claude + Codex + Copilot plugin envelopes that deliver it. Locked together because the Claude Code marketplace deduplicates by manifest version: skill changes only reach plugin users when the manifest version advances, so the plugin manifests, the Copilot marketplace entry, and SKILL.md must move as one. Machine compatibility is carried separately by SKILL.md's runtime_contract, not by this X.Y.Z.",
       "files": [
         { "path": ".claude-plugin/plugin.json", "kind": "json", "field": "version" },
         { "path": ".codex-plugin/plugin.json", "kind": "json", "field": "version" },
+        { "path": ".github/plugin/plugin.json", "kind": "json", "field": "version" },
+        { "path": ".github/plugin/marketplace.json", "kind": "json", "field": "plugins[0].version" },
         { "path": "skills/open-prose/SKILL.md", "kind": "yaml", "field": "version" }
       ]
     }

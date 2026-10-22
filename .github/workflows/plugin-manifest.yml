@@ -6,7 +6,8 @@ on:
       - ".claude-plugin/**"
       - ".codex-plugin/**"
       - ".agents/plugins/**"
-      - "skills/open-prose/SKILL.md"
+      - ".github/plugin/**"
+      - "skills/open-prose/**"
       - "scripts/bump-version.sh"
       - "scripts/release-preflight.sh"
       - "scripts/sync-copy.sh"
@@ -22,7 +23,8 @@ on:
       - ".claude-plugin/**"
       - ".codex-plugin/**"
       - ".agents/plugins/**"
-      - "skills/open-prose/SKILL.md"
+      - ".github/plugin/**"
+      - "skills/open-prose/**"
       - "scripts/bump-version.sh"
       - "scripts/release-preflight.sh"
       - "scripts/sync-copy.sh"
@@ -78,6 +80,21 @@ jobs:
       - name: OpenProse versions in sync
         run: ./scripts/bump-version.sh --check
 
+      - name: Verify skill version bump in a disposable tree
+        run: |
+          set -euo pipefail
+          version_root="$(mktemp -d "$RUNNER_TEMP/openprose-version.XXXXXX")"
+          trap 'rm -rf -- "$version_root"' EXIT
+          mkdir -p "$version_root/scripts"
+          cp .version-bump.json "$version_root/"
+          cp scripts/bump-version.sh "$version_root/scripts/"
+          while IFS= read -r target; do
+            mkdir -p "$version_root/$(dirname "$target")"
+            cp "$target" "$version_root/$target"
+          done < <(jq -r '.tracks.skill.files[].path' .version-bump.json)
+          bash "$version_root/scripts/bump-version.sh" --track skill 0.0.0
+          bash "$version_root/scripts/bump-version.sh" --check --track skill
+
       - name: Plugin copy in sync
         run: ./scripts/sync-copy.sh --check
 
@@ -97,3 +114,98 @@ jobs:
         run: |
           jq -e '.name == "openprose"' .claude-plugin/marketplace.json
           jq -e '.name == "openprose"' .agents/plugins/marketplace.json
+          jq -e '.name == "openprose"' .github/plugin/marketplace.json
+
+      - name: Validate Copilot plugin and marketplace
+        run: |
+          node -e '
+            const assert = require("node:assert/strict");
+            const fs = require("node:fs");
+            const m = JSON.parse(fs.readFileSync(".github/plugin/plugin.json", "utf8"));
+            assert.equal(m.name, "open-prose");
+            assert.match(m.version, /^\d+\.\d+\.\d+$/);
+            assert.equal(m.skills, "./skills");
+            assert.ok(fs.existsSync("skills/open-prose/SKILL.md"), "missing skill");
+            const mp = JSON.parse(fs.readFileSync(".github/plugin/marketplace.json", "utf8"));
+            assert.equal(mp.name, "openprose");
+            assert.ok(mp.owner.name, "missing marketplace owner");
+            assert.equal(mp.plugins.length, 1);
+            assert.equal(mp.plugins[0].name, m.name);
+            assert.equal(mp.plugins[0].source, "./");
+            assert.equal(mp.plugins[0].version, m.version);
+            console.log("ok: copilot plugin and marketplace");
+          '
+
+  copilot-install:
+    name: Install Copilot plugin without a model key
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Copilot CLI
+        run: npm install --global @github/copilot@1.0.102
+
+      - name: Install and discover the native envelope in a disposable home
+        run: |
+          set -euo pipefail
+          temp_home="$(mktemp -d "$RUNNER_TEMP/openprose-copilot.XXXXXX")"
+          trap 'rm -rf -- "$temp_home"' EXIT
+          plugin_root="$temp_home/plugin"
+          mkdir -p "$plugin_root/.github/plugin" "$plugin_root/.claude-plugin"
+          cp .github/plugin/plugin.json .github/plugin/marketplace.json "$plugin_root/.github/plugin/"
+          cp .claude-plugin/plugin.json .claude-plugin/marketplace.json "$plugin_root/.claude-plugin/"
+          cp -R skills "$plugin_root/skills"
+
+          # Distinct metadata proves neither manifest came from the Claude fallback.
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const root = process.argv[1];
+            for (const [file, change] of [
+              [".github/plugin/plugin.json", m => { m.version += "-copilot-smoke"; }],
+              [".github/plugin/marketplace.json", m => { delete m.plugins[0].version; }],
+              [".claude-plugin/marketplace.json", m => { m.name = "claude-fallback"; }],
+            ]) {
+              const target = path.join(root, file);
+              const manifest = JSON.parse(fs.readFileSync(target, "utf8"));
+              change(manifest);
+              fs.writeFileSync(target, JSON.stringify(manifest));
+            }
+          ' "$plugin_root"
+
+          export HOME="$temp_home/home"
+          export USERPROFILE="$HOME"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          export COPILOT_HOME="$HOME/.copilot"
+          export COPILOT_CACHE_HOME="$temp_home/cache"
+          export COPILOT_AUTO_UPDATE=false
+          mkdir -p "$HOME"
+
+          copilot plugin marketplace add "$plugin_root"
+          copilot plugin marketplace browse openprose
+          copilot plugin install open-prose@openprose
+          copilot plugin list --json > "$temp_home/plugins.json"
+          node -e '
+            const assert = require("node:assert/strict");
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const root = process.argv[1];
+            const expected = JSON.parse(fs.readFileSync(path.join(root, "plugin/.github/plugin/plugin.json"), "utf8"));
+            const plugins = JSON.parse(fs.readFileSync(path.join(root, "plugins.json"), "utf8"));
+            const plugin = plugins.find(p => p.name === "open-prose" && p.marketplace === "openprose");
+            assert.ok(plugin, "native marketplace plugin not installed");
+            assert.equal(plugin.version, expected.version, "native plugin manifest not selected");
+            assert.equal(plugin.enabled, true);
+            console.log("ok: native Copilot marketplace and plugin selected");
+          ' "$temp_home"
+          copilot skill list | tee "$temp_home/skills.txt"
+          grep -q "Plugin skills:" "$temp_home/skills.txt"
+          grep -q "open-prose" "$temp_home/skills.txt"
