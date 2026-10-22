@@ -124,7 +124,10 @@ Then run `prose install` to fetch and pin it.
 
 ### What AI assistants are supported?
 
-Codex, Claude Code, OpenCode, Amp, and similar agent harnesses. Any host that
+Skill installation is documented for Codex, Claude Code, GitHub Copilot CLI and
+app, OpenCode, and Amp. See [agent onboarding](agent-onboarding.md#github-copilot)
+for Copilot installation and VS Code, cloud agent, and SDK discovery paths.
+Installation alone does not establish runtime conformance. Any host that
 runs a sufficiently intelligent model and supports the OpenProse primitives
 (`spawn_session`, filesystem state, tool calls, and user input) is considered
 "Prose Complete".

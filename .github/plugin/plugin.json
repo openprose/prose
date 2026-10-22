@@ -1,0 +1,23 @@
+{
+  "name": "open-prose",
+  "description": "State what an agent must accomplish and which requirements it must satisfy. Reuse and combine Markdown contracts.",
+  "version": "0.18.1",
+  "license": "MIT",
+  "homepage": "https://github.com/openprose/prose",
+  "author": {
+    "name": "OpenProse",
+    "url": "https://github.com/openprose"
+  },
+  "repository": "https://github.com/openprose/prose",
+  "skills": "./skills",
+  "keywords": [
+    "ai",
+    "agents",
+    "orchestration",
+    "dsl",
+    "prose",
+    "workflow",
+    "multi-agent",
+    "copilot"
+  ]
+}

@@ -258,7 +258,7 @@ The shippable repository also contains:
 | Company-as-Prose package | `packages/co/` | Generic company-operations starter contracts (migrated to the current vocabulary) |
 | Examples | `skills/open-prose/examples/` | Native OpenProse repositories; migrated to responsibility/function/gateway |
 | Tests and fixtures | repo-root skill tests (`tests/open-prose/`) | Skill/spec conformance and compile-validation |
-| Plugin envelopes | `.codex-plugin/`, `.claude-plugin/`, `.agents/plugins/` | Marketplace/install metadata |
+| Plugin envelopes | `.codex-plugin/`, `.claude-plugin/`, `.agents/plugins/`, `.github/plugin/` | Marketplace/install metadata |
 
 OpenProse is distributed as an MIT-licensed beta. The SKILL and the language
 collect no telemetry; whether a harness does is that harness's own documented

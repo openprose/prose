@@ -41,7 +41,27 @@ The fastest way to touch the language is the skill:
 npx skills add openprose/prose
 ```
 
-That installs OpenProse into any Prose-Complete coding agent (Claude Code, Codex CLI, OpenCode, and friends). From there, point your agent at a contract and say `prose run <file>`: the session itself embodies the VM; there is no separate binary. The [`examples/`](skills/open-prose/examples/) directory is the tour; start small and read the contract before you run it.
+That installs the skill for coding agents including Claude Code, Codex CLI,
+GitHub Copilot, and OpenCode. Point a compatible agent at a contract and say
+`prose run <file>`: the session itself embodies the VM; there is no separate
+binary. The [`examples/`](skills/open-prose/examples/) directory is the tour;
+start small and read the contract before you run it.
+
+**GitHub Copilot CLI and app:** install the plugin from the repository's
+`openprose` marketplace:
+
+```bash
+copilot plugin marketplace add openprose/prose
+copilot plugin install open-prose@openprose
+copilot skill list
+```
+
+Start a new Copilot session and enter `prose run <file>` in chat. In the app,
+**Customize > Plugins** also manages plugin installation. The plugin supplies
+the skill, not a separate runtime or additional permissions. Installation does
+not establish runtime conformance; contracts still require the host
+capabilities they declare. See [Copilot installation](skills/open-prose/agent-onboarding.md#github-copilot)
+for VS Code, cloud agent, and SDK discovery paths.
 
 For a new program, say `prose init`, then use `prose compose` to shape its
 purpose, topology, contract boundaries, and outside-in semantic tests. Compose

@@ -1,0 +1,17 @@
+{
+  "name": "openprose",
+  "metadata": {
+    "description": "Express intent by composing requirements."
+  },
+  "owner": {
+    "name": "OpenProse"
+  },
+  "plugins": [
+    {
+      "name": "open-prose",
+      "source": "./",
+      "version": "0.18.1",
+      "description": "State what an agent must accomplish and which requirements it must satisfy. Reuse and combine Markdown contracts."
+    }
+  ]
+}

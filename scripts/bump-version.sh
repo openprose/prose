@@ -62,7 +62,10 @@ write_field() {
       # through jq re-serializes the whole manifest (it once re-expanded a
       # one-line array to four lines), so a bump must touch one line and leave
       # the rest byte-identical. Reads and --check still go through jq.
-      local pattern="^([[:space:]]*\"${field}\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")"
+      # A nested pointer such as plugins[0].version still edits one unique
+      # leaf-key line; reads and checks retain the full pointer.
+      local key="${field##*.}"
+      local pattern="^([[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")"
       local hits
       hits="$(grep -cE "$pattern" "$REPO_ROOT/$path" || true)"
       if [[ "$hits" != "1" ]]; then
