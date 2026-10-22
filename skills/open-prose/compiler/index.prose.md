@@ -139,12 +139,16 @@ agent skills_resolver:
   Load contract-markdown.md (Skills) and compiler/ir-v0.md.
   For each declared skill in colon form (namespace:name), search in order:
     1. <project>/skills/
-    2. ~/.claude/skills/
-    3. ~/.codex/skills/
-    4. ~/.agents/skills/
+    2. <project>/.github/skills/
+    3. <project>/.agents/skills/
+    4. <project>/.claude/skills/
+    5. ~/.claude/skills/
+    6. ~/.codex/skills/
+    7. ~/.copilot/skills/
+    8. ~/.agents/skills/
   A skill resolves when one of those paths contains a directory whose name
-  matches the skill name in either flat (<name>) or namespaced
-  (<namespace>/<name>) layout.
+  matches the skill name. Within each root, check flat (<name>) before
+  namespaced (<namespace>/<name>) layout; the first matching directory wins.
   Aggregate scope: a responsibility's declared skills apply to every function
   its render calls; node-level declarations are additive — they extend, never
   replace, the inherited set.
@@ -180,6 +184,11 @@ agent tools_resolver:
   checks.
   For each supported MCP declaration, check the deterministic host MCP registry
   for that server name. Do not install, contact, or introspect the MCP server.
+  On Copilot CLI/SDK, use the active session's advertised server names,
+  including plugin servers and session-scoped --additional-mcp-config or SDK
+  mcpServers entries only when advertised by the host. A config-file entry
+  alone is not proof of availability. If the host does not expose the required
+  registration, report tool_unresolved rather than guessing or contacting it.
   Aggregate scope: a responsibility's declared tools apply to every function its
   render calls; node-level declarations are additive — they extend, never
   replace, the inherited set. A responsibility's declarations are the host

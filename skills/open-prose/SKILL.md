@@ -168,11 +168,25 @@ the current host must map onto its available tools:
 
 | Abstract Primitive | Meaning | Host Mapping |
 |--------------------|---------|--------------|
-| `spawn_session` | Run a render, execution branch, or delegate in an isolated agent/session | Use the host's subagent primitive when available; otherwise execute inline only for trivial single-render runs and report the limitation for multi-agent runs |
-| `ask_user` | Pause for missing required caller input | Use the host's user-question tool if available; otherwise ask plainly in chat |
+| `spawn_session` | Run a render, execution branch, or delegate in an isolated agent/session | Use the host's subagent primitive. Copilot CLI/SDK: `task` with `agent_type: "general-purpose"`. If unavailable, execute inline only for trivial single-render runs and report the limitation for multi-agent runs |
+| `ask_user` | Pause for missing required caller input | Use the host's user-question tool; a plain-chat fallback requires an interactive host that can resume. Copilot SDK hosts supply `onUserInputRequest` for `ask_user` |
 | `read_state` / `write_state` | Read and write run state through the selected backend | Use filesystem tools for default runs; use the selected database tool/connection for SQLite or PostgreSQL |
-| `copy_binding` | Publish declared outputs through the active backend | Filesystem backend copies from `workspace/` to `bindings/`; database backends write records/attachments; never publish undeclared scratch files |
+| `copy_binding` | Publish declared outputs through the active backend | Filesystem functions copy declared returns from `workspace/` to `bindings/`; responsibilities commit canonical `world-model/` artifacts and receipts. Database backends write records/attachments; never publish undeclared scratch files |
 | `check_env` | Verify an environment variable exists | Check only presence; never reveal or log raw values |
+| `check_tool` | Verify a declared CLI executable or MCP server exists | Check PATH or the active session's advertised MCP registry only; do not execute the CLI tool or contact the server during preflight |
+
+On Copilot CLI/SDK, independent renders can use separate `task` calls in the
+same host turn. Pass a declared model through the host's `model` option only
+when supported; otherwise report the limitation. If using `mode: "background"`,
+wait for completion with the host's agent-result tool before publishing outputs.
+An inline fallback never waives the Run State Gate or its durable envelope.
+
+`copilot -p` is non-interactive, and `--no-ask-user` disables the question tool.
+Supply required caller values in the prompt or configure an SDK
+`onUserInputRequest` handler. If the current surface cannot collect missing
+required caller inputs, record them in the active backend event store and stop
+before rendering; never invent values or report the run as successful. A
+question printed as the final prompt-mode response is not a collected answer.
 
 ## Format Detection
 
