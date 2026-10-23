@@ -1,20 +1,20 @@
 ---
 role: dependency-resolution
 summary: |
-  How OpenProse resolves git-native dependencies from `use` statements,
-  service references, and pattern references. Defines the resolution
+  How OpenProse resolves git-native dependencies from `use` statements
+  and `pattern:` references. Defines the resolution
   algorithm, the `prose install` command, the lockfile format, and the `<openprose-root>/deps/`
   directory structure.
 see-also:
   - prose.md: VM execution semantics (loads resolved deps at runtime)
-  - forme.md: Wiring semantics (resolves services and systems from <openprose-root>/deps/)
+  - forme.md: Compile-time wiring semantics (`### Requires` → `### Maintains`)
   - SKILL.md: Command routing for `prose install`
 ---
 
 # Dependency Resolution
 
-OpenProse uses a git-native dependency model. `use` statements, dependency-like
-service names, and `pattern:` references can point at any explicit git host.
+OpenProse uses a git-native dependency model. `use` statements and `pattern:`
+references can point at any explicit git host.
 Dependencies are cloned into `<openprose-root>/deps/`, pinned in `<openprose-root>/prose.lock`, and resolved from
 disk at runtime.
 
@@ -99,13 +99,13 @@ let result = call research
   topic: "quantum computing"
 ```
 
-In `### Services`, use the full path — aliases are for execution blocks only.
+Aliases name imported functions inside pinned ProseScript choreography.
 
 ---
 
 ## Resolution Algorithm (Runtime)
 
-When the VM or Forme encounters a `use` path at runtime:
+When the VM encounters a `use` path at runtime:
 
 1. Expand `std/` and `co/` shorthands to
    `github.com/openprose/prose/packages/{std|co}/` if applicable
@@ -127,7 +127,6 @@ Scans the project for dependency references and clones missing dependencies.
 
 1. **Scan** all `*.prose.md` files under `<openprose-root>/src/` for:
    - `use "host/owner/repo/path"` statements
-   - service names in `### Services` that start with `std/`, `co/`, or `host/owner/repo/`
    - `pattern:` references that start with `std/`, `co/`, or `host/owner/repo/`
 2. **Expand** `std/` and `co/` shorthands to `github.com/openprose/prose/packages/{std|co}/`
 3. **Parse** each expanded dependency path to extract `{host, owner, repo}` triples (the first segment is the host if it contains a dot)
@@ -281,17 +280,10 @@ If `<openprose-root>/prose.lock` exists but `<openprose-root>/deps/` is missing 
 
 ## Interaction with Forme
 
-When Forme resolves a service listed in `### Services`, it checks `<openprose-root>/deps/` as part of its resolution order (see `forme.md`, Step 2):
+Forme does not scan a service registry or implement a second dependency-resolution order. Cross-node composition is declared by mounted responsibility contracts: Forme matches each `### Requires` facet-need to the producer `### Maintains` facet that satisfies it. Pinned intra-node choreography uses `use` plus `call`; those dependency paths follow the disk-only resolver documented here.
 
-1. Same directory as the system file: `./researcher.prose.md`
-2. A subdirectory matching the name: `./researcher/index.prose.md`
-3. **`<openprose-root>/deps/` directory:** first
-   `<openprose-root>/deps/{host}/{owner}/{repo}/{path}.prose.md`, then
-   `<openprose-root>/deps/{host}/{owner}/{repo}/{path}/index.prose.md`
-4. Bare `owner/repo` identifiers: reserved for the OpenProse registry (future home at `p.prose.md`); inert today
-
-A service or system reference like `std/evals/inspector` in `### Services` resolves to `<openprose-root>/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md` after `std/` shorthand expansion.
-A directory-root system reference like `co/systems/company-repo-checker` resolves to `<openprose-root>/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`.
+A `use "std/evals/inspector"` dependency resolves to `<openprose-root>/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md` after `std/` shorthand expansion.
+A directory-root dependency like `co/systems/company-repo-checker` resolves to `<openprose-root>/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`.
 
 ---
 
@@ -301,8 +293,8 @@ When the VM encounters a `use` statement during execution:
 
 1. Expand shorthand (`std/` → `github.com/openprose/prose/packages/std/`; `co/` → `github.com/openprose/prose/packages/co/`)
 2. Parse `{host}/{owner}/{repo}` and remaining path
-3. Read the service or system from `<openprose-root>/deps/{host}/{owner}/{repo}/{path}.prose.md`, or from `<openprose-root>/deps/{host}/{owner}/{repo}/{path}/index.prose.md` when the dependency is a directory-root system
-4. Parse the imported service or system contract (`### Requires` / `### Ensures`)
+3. Read the imported function from `<openprose-root>/deps/{host}/{owner}/{repo}/{path}.prose.md`, or from `<openprose-root>/deps/{host}/{owner}/{repo}/{path}/index.prose.md` when the dependency uses a directory root
+4. Parse its current function interface (`### Parameters` / `### Returns`)
 5. Register the import (with alias if `as` was used)
 
 Runtime resolution is disk-only. If a `use` path is missing from `<openprose-root>/deps/`, the
@@ -320,8 +312,8 @@ docs, install counts, eval scores, and supported runtimes).
 
 | Use case | Resolution |
 |----------|------------|
-| `use "github.com/owner/repo/path"` in a system | `<openprose-root>/deps/github.com/owner/repo/`; error if missing |
-| `use "std/..."` or `use "co/..."` in a system | Expands to `github.com/openprose/prose/packages/{std\|co}/...` then resolves as above |
+| `use "github.com/owner/repo/path"` in ProseScript | `<openprose-root>/deps/github.com/owner/repo/`; error if missing |
+| `use "std/..."` or `use "co/..."` in ProseScript | Expands to `github.com/openprose/prose/packages/{std\|co}/...` then resolves as above |
 | `prose run github.com/owner/repo/path` at the CLI | Same algorithm as `use` |
 | `prose run github.com/owner/repo/path@{version}` | That specific pinned version in `<openprose-root>/deps/`; error if missing |
 | `prose run ... --offline` | `<openprose-root>/deps/` only; error on miss |

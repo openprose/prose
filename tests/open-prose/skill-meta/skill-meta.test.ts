@@ -285,6 +285,14 @@ describe("deps.md + agent-onboarding.md — kept, survive the overhaul", () => {
 		expect(f).toMatch(/std\/.*github\.com\/openprose\/prose\/packages\/std/);
 	});
 
+	it("deps.md does not teach retired service/system dependency syntax", () => {
+		const doc = read("deps.md");
+		const f = flat(doc);
+		expect(doc).not.toContain("### Services");
+		expect(doc).not.toContain("### Ensures");
+		expect(f).not.toMatch(/service or system|system file|service listed/i);
+	});
+
 	it("agent-onboarding.md teaches an outcome contract without pinning implementation choreography", () => {
 		// Kept, with links; the narrative already aligns.
 		const doc = read("agent-onboarding.md");
